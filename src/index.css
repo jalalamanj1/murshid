@@ -1,0 +1,315 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./assets/fonts/Cairo-Light.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/Cairo-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/Cairo-Medium.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/Cairo-Bold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./assets/fonts/Cairo-ExtraBold.ttf') format('truetype');
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, monospace;
+  
+  --color-office-blue: var(--office-blue);
+  --color-office-hover: var(--office-hover);
+  --color-office-bg: var(--office-bg);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-text-main: var(--text-main);
+  --color-text-sec: var(--text-sec);
+  --color-border-color: var(--border-color);
+}
+
+:root {
+  --office-blue: #0078D4;
+  --office-hover: #106ebe;
+  --office-bg: #F3F2F1;
+  --sidebar-bg: #FFFFFF;
+  --text-main: #323130;
+  --text-sec: #605E5C;
+  --border-color: #EDEBE9;
+}
+
+.dark {
+  --office-blue: #3b82f6;
+  --office-hover: #2563eb;
+  --office-bg: #0f172a;
+  --sidebar-bg: #1e293b;
+  --text-main: #f1f5f9;
+  --text-sec: #cbd5e1;
+  --border-color: #334155;
+}
+
+/* Custom WinForms-style scrollbar and native look-and-feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--office-bg);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C8C6C4;
+  border-radius: 2px;
+  border: 1px solid var(--office-bg);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-color: #0f172a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A19F9D;
+}
+
+body {
+  font-family: "Cairo", sans-serif;
+  background-color: var(--office-bg);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 
+  Highly Refined Global Overrides for a Stunning Premium Dark Theme
+  Matches any hardcoded light-theme classes and translates them into elegant dark variants 
+*/
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-[#F8F9FA],
+.dark .bg-slate-50,
+.dark .bg-[#f8fafc] {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50\/70,
+.dark .bg-white\/80 {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-100\/80 {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-50:hover {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-white:hover {
+  background-color: #1e293b !important;
+}
+
+/* Border Overrides */
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-gray-200,
+.dark .border-slate-150 {
+  border-color: #334155 !important;
+}
+
+/* Text Overrides for High Contrast and Absolute Legibility */
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900,
+.dark .text-slate-950 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700,
+.dark .text-gray-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-gray-600,
+.dark .text-slate-500,
+.dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400,
+.dark .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Inputs, Select, Textareas */
+.dark select,
+.dark input,
+.dark textarea {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark select:focus,
+.dark input:focus,
+.dark textarea:focus {
+  border-color: #3b82f6 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Form Modals and Title Bars */
+.dark #activation_form,
+.dark #registration_form,
+.dark [id$="_form"],
+.dark .rounded-xl {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-gray-100 {
+  background-color: #111827 !important;
+}
+
+/* Alerts, Success, Warning Banners (Refined with glowing, semi-transparent backgrounds) */
+.dark .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+  color: #fda4af !important;
+}
+
+.dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  color: #6ee7b7 !important;
+}
+
+.dark .bg-blue-50,
+.dark .bg-blue-50\/70,
+.dark .bg-blue-50\/20 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+.dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #fde047 !important;
+}
+
+/* Table Overrides */
+.dark table {
+  color: #e2e8f0 !important;
+}
+
+.dark thead,
+.dark thead tr {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+.dark tbody tr {
+  border-bottom-color: #334155 !important;
+}
+
+.dark tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Specific elements for beautiful visual styling */
+.dark .bg-white\/15 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Print styles for single page outputs */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Hide the main app wrapper completely during print */
+  #root > :not(#counseling-print-container) {
+    display: none !important;
+  }
+  
+  /* Display only our custom print container */
+  #counseling-print-container {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent page breaks inside the main table */
+  table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  @page {
+    size: portrait;
+    margin: 10mm;
+  }
+}
+

@@ -1,0 +1,113 @@
+{
+  "name": "murshid",
+  "private": true,
+  "version": "1.0.0",
+  "main": "electron/main.cjs",
+  "author": "Pandara Tech",
+  "description": "مرشد - المرشد التربوي العراقي المتكامل",
+  "copyright": "Copyright © 2025 Pandara Tech",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build && node scripts/generate-integrity.cjs",
+    "preview": "vite preview",
+    "clean": "node -e \"const f=require('fs');['dist','release'].forEach(d=>f.rmSync(d,{recursive:true,force:true}))\"",
+    "lint": "tsc --noEmit",
+    "electron:dev": "electron . --dist",
+    "electron:build": "npm run build && electron-builder --win",
+    "electron:build:dir": "npm run build && electron-builder --win --dir"
+  },
+  "dependencies": {
+    "docxtemplater": "^3.69.0",
+    "electron-updater": "^6.8.9",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "pizzip": "^3.2.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/express": "^4.17.21",
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "electron": "^37.5.1",
+    "electron-builder": "^26.0.12",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  },
+  "build": {
+    "appId": "com.pandaratech.murshid",
+    "productName": "مرشد",
+    "copyright": "Copyright © 2025 Pandara Tech",
+    "directories": {
+      "output": "release"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "pandara-tech",
+      "repo": "murshid",
+      "releaseType": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "!electron/ai",
+      "integrity.json",
+      "assets/templates/**/*.docx",
+      "assets/records-cover/**/*.docx",
+      "assets/records-cover/**/*.jpg",
+      "assets/records-cover/**/*.png"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/ai",
+        "to": "ai",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.dll",
+      "**/*.exe",
+      "**/node_modules/sharp/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/logo.ico",
+      "artifactName": "murshid-${version}-win-${arch}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Murshid",
+      "installerIcon": "public/logo.ico",
+      "uninstallerIcon": "public/logo.ico",
+      "installerHeaderIcon": "public/logo.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "public/logo.png"
+    }
+  }
+}

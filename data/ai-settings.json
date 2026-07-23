@@ -1,0 +1,14 @@
+{
+  "model": "gemma-3-1b-it-q4_0.gguf",
+  "temperature": 0.7,
+  "topP": 0.9,
+  "topK": 40,
+  "maxTokens": 1024,
+  "contextSize": 4096,
+  "threads": 4,
+  "gpuLayers": 0,
+  "reasoningMode": "standard",
+  "streaming": true,
+  "autoSaveChats": true,
+  "allowToolCalls": true
+}

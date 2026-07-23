@@ -12,7 +12,6 @@ export type ActiveModule =
   | 'TEMPLATES'
   | 'PT_DRIVE'
   | 'OFFICIAL_LETTERS'
-  | 'AI_TEST'
   | 'BACKUP'
   | 'SETTINGS';
 

@@ -17,7 +17,6 @@ import {
   AlertCircle,
   FileBox,
   Monitor,
-  Sparkles,
 } from 'lucide-react';
 import { ActiveModule, CounselorProfile } from '../types';
 
@@ -57,7 +56,8 @@ export default function DesktopWindow({
       case 'TEMPLATES': return 'أغلفة سجلات الإرشاد';
       case 'PT_DRIVE': return 'Pandara Drive';
       case 'OFFICIAL_LETTERS': return 'مخاطبات رسمية';
-      case 'AI_TEST': return 'Murshid AI';
+
+
       case 'BACKUP': return 'النسخ الاحتياطي ومزامنة السحاب';
       case 'SETTINGS': return 'إعدادات النظام المكتبي';
       default: return 'مرشد';
@@ -90,7 +90,6 @@ export default function DesktopWindow({
                   { id: 'TEMPLATES', name: 'أغلفة سجلات الإرشاد', icon: FileText },
                   { id: 'PT_DRIVE', name: 'Pandara Drive', icon: Monitor },
                   { id: 'OFFICIAL_LETTERS', name: 'مخاطبات رسمية', icon: FileText },
-                  { id: 'AI_TEST', name: 'Murshid AI', icon: Sparkles },
                   { id: 'BACKUP', name: 'النسخ الاحتياطي والمزامنة', icon: Database },
                   { id: 'SETTINGS', name: 'إعدادات النظام المكتبي', icon: Sliders }
                 ].map((item) => {

@@ -34,14 +34,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     generate: (modelId, title) => ipcRenderer.invoke('cover:generate', modelId, title),
   },
 
-  // ── Local AI Assistant ──────────────────────────────────────────
-  localai: {
-    start: () => ipcRenderer.invoke('localai:start'),
-    stop: () => ipcRenderer.invoke('localai:stop'),
-    status: () => ipcRenderer.invoke('localai:status'),
-    chat: (message, history) => ipcRenderer.invoke('localai:chat', message, history),
-  },
-
   // ── Auto-updater ─────────────────────────────────────────────────
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),

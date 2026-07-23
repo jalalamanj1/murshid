@@ -199,28 +199,6 @@ app.whenReady().then(async () => {
 
 });
 
-  // ── Local AI Assistant ──────────────────────────────────────────────
-  const LocalAIService = require('./LocalAIService.cjs');
-  const localAI = new LocalAIService();
-  // Auto-start the AI in background (it takes 30-60s to load)
-  setTimeout(() => { localAI.start(); }, 5000);
-
-  ipcMain.handle('localai:start', async () => {
-    try { return localAI.start(); } catch (err) { return { ok: false, error: err.message }; }
-  });
-  ipcMain.handle('localai:stop', async () => {
-    try { return localAI.stop(); } catch (err) { return { ok: false, error: err.message }; }
-  });
-  ipcMain.handle('localai:status', async () => {
-    return { ok: true, running: localAI.isRunning, starting: localAI.isStarting };
-  });
-  ipcMain.handle('localai:chat', async (_event, message, history) => {
-    try { return await localAI.chat(message, history); } catch (err) { return { ok: false, error: err.message }; }
-  });
-
-  // Stop AI on app quit
-  process.on('exit', () => localAI.stop());
-
 app.on('window-all-closed', () => {
   app.quit();
 });

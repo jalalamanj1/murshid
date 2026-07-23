@@ -10,3 +10,13 @@ coverage/
 electron/ai/
 whisper-main/
 integrity.json
+client_secret_*.json
+supabase/
+*.tgz
+murshid.html
+metadata.json
+server.js
+server.cjs
+logo.png
+mos/
+data/settings-backups/

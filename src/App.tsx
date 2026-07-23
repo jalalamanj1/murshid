@@ -68,7 +68,6 @@ import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
 import GoogleDriveFolderView from './components/GoogleDriveFolderView';
 import RecordCoversView from './components/RecordCoversView';
 import OfficialLettersView from './components/OfficialLettersView';
-import AiChatView from './components/AiChatView';
 import ExportSection from './components/ExportSection';
 import UpdateSettingsView from './components/UpdateSettingsView';
 
@@ -86,7 +85,6 @@ import {
   Award,
   Sun,
   Moon,
-  Loader2
 } from 'lucide-react';
 
 export default function App() {
@@ -165,63 +163,6 @@ export default function App() {
     setGdriveConnected(false);
     setGdriveEmail('');
   };
-
-  // ── Telegram Bot ───────────────────────────────────────────────
-  // ── Local AI Assistant ──────────────────────────────────────────
-  const [aiReady, setAiReady] = useState(false);
-  const [aiStarting, setAiStarting] = useState(false);
-  const [aiInput, setAiInput] = useState('');
-  const [aiMessages, setAiMessages] = useState<{role: string; content: string}[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  const handleAiStart = async () => {
-    const api = (window as any).electronAPI;
-    if (!api?.localai) return;
-    setAiStarting(true);
-    const res = await api.localai.start();
-    if (res.ok) {
-      setAiReady(true);
-      setAiStarting(false);
-      setAiMessages([{ role: 'ai', content: 'مرحباً! أنا المساعد الذكي. كيف يمكنني مساعدتك اليوم؟' }]);
-    } else {
-      alert(res.error || 'فشل تشغيل النموذج');
-      setAiStarting(false);
-    }
-  };
-
-  const handleAiStop = async () => {
-    const api = (window as any).electronAPI;
-    if (!api?.localai) return;
-    await api.localai.stop();
-    setAiReady(false);
-    setAiMessages([]);
-  };
-
-  const handleAiSend = async () => {
-    if (!aiInput.trim() || aiLoading) return;
-    const api = (window as any).electronAPI;
-    if (!api?.localai) return;
-    const msg = aiInput.trim();
-    setAiInput('');
-    setAiMessages(prev => [...prev, { role: 'user', content: msg }]);
-    setAiLoading(true);
-    const history = aiMessages.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
-    const res = await api.localai.chat(msg, history);
-    setAiLoading(false);
-    if (res.ok) {
-      setAiMessages(prev => [...prev, { role: 'ai', content: res.reply }]);
-    } else {
-      setAiMessages(prev => [...prev, { role: 'ai', content: '❌ ' + (res.error || 'حدث خطأ') }]);
-    }
-  };
-
-  // Listen for AI-triggered data changes to refresh state
-  useEffect(() => {
-    const handler = () => { setRecords(loadRecords()); };
-    window.addEventListener('murshid-record-added', handler);
-    window.addEventListener('murshid-data-changed', handler);
-    return () => { window.removeEventListener('murshid-record-added', handler); window.removeEventListener('murshid-data-changed', handler); };
-  }, []);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -919,9 +860,6 @@ export default function App() {
       case 'OFFICIAL_LETTERS':
         return <OfficialLettersView />;
 
-      case 'AI_TEST':
-        return <AiChatView />;
-
       case 'BACKUP':
         return (
           <BackupSyncView
@@ -988,62 +926,6 @@ export default function App() {
 
               {/* Update Settings */}
               <UpdateSettingsView />
-
-              {/* Local AI Assistant Section */}
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-3 max-w-lg">
-                <h4 className="text-xs font-black text-slate-700 dark:text-slate-300">المساعد الذكي (AI) — يعمل بدون إنترنت</h4>
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${aiReady ? 'bg-emerald-50 text-emerald-600' : aiStarting ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
-                        <Loader2 className={`w-5 h-5 ${aiStarting ? 'animate-spin' : ''}`} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          {aiReady ? 'النموذج جاهز' : aiStarting ? 'جاري التحميل...' : 'النموذج غير محمل'}
-                        </p>
-                        <p className="text-[10px] text-slate-400">
-                          {aiReady ? 'Qwen2.5-1.5B — يعمل محلياً' : aiStarting ? 'قد يستغرق 30-60 ثانية للتحميل الأولي' : 'استخدم نموذج Qwen المحلي للرد على الاستفسارات'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={aiReady ? handleAiStop : handleAiStart}
-                      className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                        aiReady ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200' :
-                        aiStarting ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
-                        'bg-office-blue hover:bg-office-hover text-white'
-                      }`}
-                      disabled={aiStarting}
-                    >
-                      {aiReady ? 'إيقاف' : aiStarting ? '...' : 'تشغيل'}
-                    </button>
-                  </div>
-                  {aiReady && (
-                    <div className="mt-3 space-y-2">
-                      <div className="bg-white dark:bg-slate-900 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 border border-slate-100 dark:border-slate-800" id="aiChatBox">
-                        {aiMessages.map((m, i) => (
-                          <div key={i} className={`text-[11px] ${m.role === 'user' ? 'text-slate-700 dark:text-slate-300 text-left' : 'text-office-blue dark:text-blue-400 text-right'}`}>
-                            <span className="font-bold">{m.role === 'user' ? 'أنت: ' : 'AI: '}</span>
-                            {m.content}
-                          </div>
-                        ))}
-                        {aiLoading && <div className="text-[11px] text-slate-400 animate-pulse">AI جاري الرد...</div>}
-                      </div>
-                      <div className="flex gap-2">
-                        <input type="text" value={aiInput} onChange={e => setAiInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleAiSend(); }}
-                          placeholder="اسأل المساعد الذكي..."
-                          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-office-blue" />
-                        <button onClick={handleAiSend} disabled={aiLoading || !aiInput.trim()}
-                          className="bg-office-blue hover:bg-office-hover disabled:opacity-50 text-white px-4 py-2 rounded-lg text-[11px] font-bold transition-colors cursor-pointer">
-                          إرسال
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {/* Google Drive Connection Section */}
               <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-3 max-w-lg">
@@ -1182,7 +1064,6 @@ export default function App() {
       TEMPLATES: 'أغلفة سجلات الإرشاد',
       PT_DRIVE: 'Pandara Drive',
       OFFICIAL_LETTERS: 'مخاطبات رسمية',
-      AI_TEST: 'Murshid AI',
       BACKUP: 'النسخ الاحتياطي',
       SETTINGS: 'الإعدادات',
     };

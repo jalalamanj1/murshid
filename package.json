@@ -65,21 +65,7 @@
       "assets/records-cover/**/*.jpg",
       "assets/records-cover/**/*.png"
     ],
-    "extraResources": [
-      {
-        "from": "electron/ai",
-        "to": "ai",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
     "asar": true,
-    "asarUnpack": [
-      "**/*.dll",
-      "**/*.exe",
-      "**/node_modules/sharp/**"
-    ],
     "win": {
       "target": [
         {

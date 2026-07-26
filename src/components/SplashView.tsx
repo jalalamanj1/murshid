@@ -111,7 +111,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
           <div className="flex justify-between items-center mt-4">
             <span className="sp-footer" style={{ fontSize: 11, fontWeight: 400, color: '#A0B4CC', fontFamily: 'Arial, sans-serif' }}>جميع الحقوق محفوظة لشركة Pandara Tech</span>
             <span className="absolute left-1/2 -translate-x-1/2 sp-status" style={{ fontSize: 11, fontWeight: 500, color: '#7A8BA0', fontFamily: 'Arial, sans-serif', whiteSpace: 'nowrap' }}>{statusText}</span>
-            <span className="sp-footer" style={{ fontSize: 11, fontWeight: 400, color: '#A0B4CC', fontFamily: 'Arial, sans-serif' }}>النسخة: v1.0.0</span>
+            <span className="sp-footer" style={{ fontSize: 11, fontWeight: 400, color: '#A0B4CC', fontFamily: 'Arial, sans-serif' }}>النسخة: v1.0.4</span>
           </div>
         </div>
       </div>

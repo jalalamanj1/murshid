@@ -1,7 +1,7 @@
 {
   "name": "murshid",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.4",
   "main": "electron/main.cjs",
   "author": "Pandara Tech",
   "description": "مرشد - المرشد التربوي العراقي المتكامل",
@@ -66,6 +66,7 @@
       "assets/records-cover/**/*.png"
     ],
     "asar": true,
+    "compression": "store",
     "win": {
       "target": [
         {

@@ -45,7 +45,7 @@ export default function CaseStudyKeyGuideView({ students, profile, caseStudies, 
   const enriched = useMemo<EnrichedCase[]>(() => {
     return caseStudies.map((cs, idx) => {
       const student = students.find(s => s.id === cs.studentId);
-      const gradeSection = student ? `${student.classGrade} / ${student.section}` : '—';
+      const gradeSection = student ? `${student.classGrade}` : '—';
       const reviewDate = cs.followUps.length > 0
         ? cs.followUps[cs.followUps.length - 1].date
         : cs.caseDate;

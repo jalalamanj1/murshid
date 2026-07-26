@@ -138,8 +138,8 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
             studentId: sid,
             studentName: r.studentNames?.[i] || st?.fullName || '',
             grade: st?.classGrade || '',
-            section: st?.section || '',
-            guardianPhone: st?.parentPhone || '',
+            section: st?.classGrade || '',
+            guardianPhone: '',
           };
         });
         const res = await electron.exportDocx('special-gifted', records);
@@ -206,8 +206,8 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
               studentId: sid,
               studentName: r.studentNames?.[i] || st?.fullName || '',
               grade: st?.classGrade || '',
-              section: st?.section || '',
-              guardianPhone: st?.parentPhone || '',
+              section: st?.classGrade || '',
+              guardianPhone: '',
             });
           });
         } else {

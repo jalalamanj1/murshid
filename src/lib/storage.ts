@@ -33,11 +33,11 @@ const DEFAULT_RECORDS: CounselingRecord[] = [];
 
 export const loadLicense = (): LicenseInfo => {
   const data = localStorage.getItem(STORAGE_KEYS.LICENSE);
-  if (!data) return { licenseKey: '', isActivated: false };
+  if (!data) return { isActivated: false };
   try {
     return JSON.parse(data);
   } catch {
-    return { licenseKey: '', isActivated: false };
+    return { isActivated: false };
   }
 };
 

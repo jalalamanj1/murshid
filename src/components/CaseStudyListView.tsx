@@ -122,7 +122,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
               { label: 'رقم الحالة', value: selected.caseNumber },
               { label: 'اسم الطالب', value: selected.studentName },
               { label: 'الصف', value: student?.classGrade || '—' },
-              { label: 'الشعبة', value: student?.section || '—' },
+              { label: 'الشعبة', value: student?.classGrade || '—' },
               { label: 'مصدر الإحالة', value: selected.referralSource },
               { label: 'التاريخ', value: fmtDate(selected.caseDate) },
               { label: 'اليوم', value: selected.caseDay },
@@ -327,7 +327,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
                 </h4>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-800">
-                    {stu?.classGrade || '—'} — {stu?.section || '—'}
+                    {stu?.classGrade || '—'}
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-800">
                     {cs.referralSource}

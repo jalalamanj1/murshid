@@ -42,17 +42,17 @@ const DATA_KEYS = {
 
 // ── Default backup settings ─────────────────────────────────────────
 const DEFAULT_BACKUP_SETTINGS: BackupSettings = {
-  localFolder: 'D:\\Murshid\\Backups',
+  localFolder: '',
   maxLocalBackups: 10,
   deleteOldBackups: true,
   compressBackups: true,
   includeAttachments: true,
   includeTemplates: true,
   includeSettings: true,
-  autoBackupDaily: false,
+  autoBackupDaily: true,
   autoBackupWeekly: false,
   autoBackupMonthly: false,
-  autoCloudBackup: false,
+  autoCloudBackup: true,
   encryptionEnabled: false,
   backupPassword: '',
   backupHistory: [],

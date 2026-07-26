@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   saveDialog: (defaultName) => ipcRenderer.invoke('dialog:save', defaultName),
   openDialog: (filters) => ipcRenderer.invoke('dialog:open', filters),
+  pickFolder: () => ipcRenderer.invoke('dialog:pick-folder'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
   // ── Session Management ──────────────────────────────────────────

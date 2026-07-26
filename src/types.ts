@@ -16,10 +16,10 @@ export type ActiveModule =
   | 'SETTINGS';
 
 export interface LicenseInfo {
-  licenseKey: string;
   isActivated: boolean;
+  licenseType?: string;
   activatedAt?: string;
-  activatedTo?: string; // Pandara Tech Registered Organization or Counselor
+  activatedTo?: string;
 }
 
 export interface CounselorProfile {
@@ -32,37 +32,29 @@ export interface CounselorProfile {
   isRegistered: boolean;
 }
 
-// Student Data Model representing the single workspace for each student
+// Student Data Model — 30 fields matching the official registration form
 export interface Student {
   id: string;
   fullName: string;
-  gender: 'MALE' | 'FEMALE';
   classGrade: string;
-  section: string;
   birthDate: string;
-  birthPlace?: string;
   nationalId?: string;
   siblingOrder?: string;
   address: string;
   fatherName?: string;
   fatherAlive?: string;
-  fatherAge?: string;
   fatherEducation?: string;
   fatherJob?: string;
   fatherPhone?: string;
-  fatherDeathYear?: string;
+  fatherDeathInfo?: string;
   motherName?: string;
   motherAlive?: string;
-  motherAge?: string;
   motherEducation?: string;
   motherJob?: string;
   motherPhone?: string;
-  motherDeathYear?: string;
-  residenceAuthority?: string;
-  brothersCount?: string;
-  sistersCount?: string;
-  roomsCount?: string;
-  altGuardianPhone?: string;
+  motherDeathInfo?: string;
+  livesWith?: string;
+  altPhone?: string;
   housingType?: string;
   isEmployed?: string;
   employmentDetails?: string;
@@ -70,16 +62,9 @@ export interface Student {
   diseaseDetails?: string;
   seesSpecialist?: string;
   specialistDetails?: string;
-  mentalPhysicalState?: string;
+  mentalState?: string;
   academicDelay?: string;
   talents?: string;
-  parentPhone: string;
-  parentJob: string;
-  bloodType?: string;
-  healthStatus?: string;
-  notes?: string;
-  studentNumber?: string;
-  customFields?: Record<string, string>;
   createdAt: string;
 }
 

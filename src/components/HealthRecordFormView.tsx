@@ -66,8 +66,7 @@ export default function HealthRecordFormView({
     const q = studentSearch.toLowerCase();
     return students.filter(s =>
       s.fullName.toLowerCase().includes(q) ||
-      s.classGrade.toLowerCase().includes(q) ||
-      s.section.toLowerCase().includes(q)
+      s.classGrade.toLowerCase().includes(q)
     );
   }, [students, studentSearch]);
 
@@ -75,8 +74,8 @@ export default function HealthRecordFormView({
     setStudentId(s.id);
     setStudentName(s.fullName);
     setGrade(s.classGrade);
-    setSection(s.section);
-    setGuardianPhone(s.parentPhone);
+    setSection('');
+    setGuardianPhone('');
     setAddress(s.address || '');
     setShowStudentPicker(false);
     setStudentSearch('');

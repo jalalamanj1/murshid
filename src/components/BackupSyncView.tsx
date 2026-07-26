@@ -504,29 +504,20 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
         </div>
 
         <div className="space-y-2.5">
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">نسخ احتياطي محلي تلقائي:</span>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[
-              { key: 'autoBackupDaily' as const, label: 'يومي', icon: '☀️' },
-              { key: 'autoBackupWeekly' as const, label: 'أسبوعي', icon: '📅' },
-              { key: 'autoBackupMonthly' as const, label: 'شهري', icon: '📆' },
-            ].map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => updateSettings({ [opt.key]: !settings[opt.key] })}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${
-                  settings[opt.key]
-                    ? 'bg-office-blue/10 dark:bg-blue-950/40 border-office-blue/30 dark:border-blue-800 text-office-blue dark:text-blue-400'
-                    : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                {settings[opt.key] ? <ToggleRight className="w-4 h-4 shrink-0" /> : <ToggleLeft className="w-4 h-4 shrink-0" />}
-                <span>{opt.icon} نسخ {opt.label}</span>
-              </button>
-            ))}
-          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => updateSettings({ autoBackupDaily: !settings.autoBackupDaily })}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${
+                settings.autoBackupDaily
+                  ? 'bg-office-blue/10 dark:bg-blue-950/40 border-office-blue/30 dark:border-blue-800 text-office-blue dark:text-blue-400'
+                  : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              {settings.autoBackupDaily ? <ToggleRight className="w-4 h-4 shrink-0" /> : <ToggleLeft className="w-4 h-4 shrink-0" />}
+              <HardDrive className="w-3.5 h-3.5" />
+              <span>نسخ احتياطي محلي تلقائي (يومي)</span>
+            </button>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <button
               onClick={() => updateSettings({ autoCloudBackup: !settings.autoCloudBackup })}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${
@@ -540,119 +531,8 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
               <span>نسخ احتياطي تلقائي إلى Google Drive</span>
             </button>
           </div>
+          <p className="text-[10px] text-slate-400">النسخ المحلي يتم عند فتح التطبيق. النسخ السحابي يتم عند الاتصال بالإنترنت.</p>
         </div>
-      </div>
-
-      {/* ── Security Settings ──────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <Shield className="w-4 h-4 text-office-blue dark:text-blue-400" />
-          <h3 className="text-xs font-black text-slate-800 dark:text-slate-100">الأمان والتشفير</h3>
-        </div>
-
-        <div className="space-y-3">
-          <button
-            onClick={() => updateSettings({ encryptionEnabled: !settings.encryptionEnabled })}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${
-              settings.encryptionEnabled
-                ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400'
-                : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            {settings.encryptionEnabled ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-            <span>{settings.encryptionEnabled ? 'التشفير مفعّل (AES-256-GCM)' : 'تفعيل التشفير على النسخ الاحتياطية'}</span>
-          </button>
-
-          {settings.encryptionEnabled && (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 relative">
-                <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={settings.backupPassword}
-                  onChange={e => updateSettings({ backupPassword: e.target.value })}
-                  placeholder="كلمة مرور التشفير (اختياري)"
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 pr-9 pl-9 text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-office-blue dark:focus:border-blue-500 transition-colors"
-                />
-                <button
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {settings.encryptionEnabled && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-3 border border-amber-100 dark:border-amber-900/30">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                  سيتم تشفير جميع النسخ الاحتياطية باستخدام تشفير AES-256-GCM. تأكد من حفظ كلمة المرور في مكان آمن. في حال فقدانها لن تتمكن من استعادة البيانات.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Advanced Settings ──────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
-        >
-          <div className="flex items-center gap-2.5">
-            <Settings2 className="w-4 h-4 text-office-blue dark:text-blue-400" />
-            <span className="text-xs font-black text-slate-800 dark:text-slate-100">إعدادات النسخ الاحتياطي المتقدمة</span>
-          </div>
-          {showSettings ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-        </button>
-
-        {showSettings && (
-          <div className="px-5 pb-5 space-y-4 border-t border-slate-100 dark:border-slate-800 pt-4 animate-fade-in">
-            {/* Max local backups */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">الحد الأقصى للنسخ المحلية المحفوظة:</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={settings.maxLocalBackups}
-                  onChange={e => updateSettings({ maxLocalBackups: parseInt(e.target.value) || 10 })}
-                  className="w-20 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 text-center focus:outline-none focus:border-office-blue"
-                />
-                <span className="text-[10px] text-slate-400">نسخة</span>
-              </div>
-            </div>
-
-            {/* Toggles */}
-            <div className="space-y-2">
-              {[
-                { key: 'deleteOldBackups' as const, label: 'حذف النسخ القديمة تلقائياً' },
-                { key: 'compressBackups' as const, label: 'ضغط النسخ الاحتياطية (ZIP)' },
-                { key: 'includeAttachments' as const, label: 'تضمين مرفقات الطلاب' },
-                { key: 'includeTemplates' as const, label: 'تضمين النماذج والقوالب' },
-                { key: 'includeSettings' as const, label: 'تضمين إعدادات النظام' },
-              ].map(item => (
-                <button
-                  key={item.key}
-                  onClick={() => updateSettings({ [item.key]: !settings[item.key] })}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] font-bold transition-all cursor-pointer w-full text-right hover:bg-slate-50 dark:hover:bg-slate-900/50"
-                >
-                  {settings[item.key] ? (
-                    <ToggleRight className="w-4 h-4 text-office-blue dark:text-blue-400 shrink-0" />
-                  ) : (
-                    <ToggleLeft className="w-4 h-4 text-slate-400 shrink-0" />
-                  )}
-                  <span className="text-slate-700 dark:text-slate-300">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Backup History ─────────────────────────────────────── */}

@@ -52,7 +52,7 @@
     "publish": {
       "provider": "github",
       "owner": "pandara-tech",
-      "repo": "murshid",
+      "repo": "Murshid-Releases",
       "releaseType": "release"
     },
     "files": [

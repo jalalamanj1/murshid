@@ -2,8 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
- * SplashView — Professional flat splash screen matching specification.
- * White background, logo left, text right, progress bar, footer.
+ * SplashView — Professional flat splash screen.
+ * Always renders in light theme regardless of app dark mode.
  */
 
 import { useState, useEffect } from 'react';
@@ -18,10 +18,8 @@ export default function SplashView({ onComplete }: SplashViewProps) {
   const [opacity, setOpacity] = useState(0);
 
   useEffect(() => {
-    // Fade in
     const fadeInTimer = setTimeout(() => setOpacity(1), 50);
 
-    // Status text updates
     const intervals = [
       { delay: 400, text: 'جاري فحص ترخيص التشغيل المحلي لشركة Pandara Tech...' },
       { delay: 900, text: 'الاتصال بوحدة التخزين المحلية للبرنامج...' },
@@ -34,12 +32,10 @@ export default function SplashView({ onComplete }: SplashViewProps) {
       setTimeout(() => setStatusText(item.text), item.delay)
     );
 
-    // Progress bar
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(timer);
-          // Wait 500ms at 100%, then fade out
           setTimeout(() => {
             setOpacity(0);
             setTimeout(onComplete, 500);
@@ -60,9 +56,23 @@ export default function SplashView({ onComplete }: SplashViewProps) {
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ backgroundColor: '#FFFFFF' }}
+      style={{ backgroundColor: '#FFFFFF', colorScheme: 'light' }}
     >
-      {/* Splash Window */}
+      <style>{`
+#splash_form,#splash_form *{
+  color-scheme:light!important;
+  background-color:transparent!important;
+  border-color:#E8ECF0!important
+}
+#splash_form{background-color:#FFFFFF!important}
+#splash_form .sp-title{color:#0B1F3A!important}
+#splash_form .sp-desc{color:#7A8BA0!important}
+#splash_form .sp-percent{color:#2D8CFF!important}
+#splash_form .sp-bar-bg{background-color:#F0F2F5!important}
+#splash_form .sp-bar-fill{background-color:#2D8CFF!important}
+#splash_form .sp-footer{color:#A0B4CC!important}
+#splash_form .sp-status{color:#7A8BA0!important}
+`}</style>
       <div
         id="splash_form"
         dir="rtl"
@@ -75,127 +85,33 @@ export default function SplashView({ onComplete }: SplashViewProps) {
           transition: 'opacity 0.5s ease-in-out',
         }}
       >
-        {/* Main Content Area */}
+        {/* Main Content */}
         <div className="flex-1 flex">
-          {/* Left Side — Logo */}
           <div className="w-[200px] flex items-center justify-center shrink-0">
-            <img
-              src="./logo.png"
-              alt="مرشد"
-              className="w-[120px] h-[120px] object-contain"
-            />
+            <img src="./logo.png" alt="مرشد" className="w-[120px] h-[120px] object-contain" />
           </div>
-
-          {/* Right Side — Text */}
           <div className="flex-1 flex flex-col justify-center pr-8 pl-4">
-            {/* Title */}
-            <h1
-              className="leading-none mb-2"
-              style={{
-                fontSize: 42,
-                fontWeight: 900,
-                color: '#0B1F3A',
-                fontFamily: 'Arial, sans-serif',
-              }}
-            >
-              مرشد
-            </h1>
-
-            {/* Description */}
-            <p
-              className="leading-relaxed max-w-[320px]"
-              style={{
-                fontSize: 13,
-                fontWeight: 400,
-                color: '#7A8BA0',
-                fontFamily: 'Arial, sans-serif',
-                lineHeight: '22px',
-              }}
-            >
-              برنامج مكتبي ذكي مصمم لمساعدة المرشد التربوي في
-              إدارة الطلبة، السجلات الإرشادية والوثائق المدرسية الرسمية.
+            <h1 className="leading-none mb-2 sp-title" style={{ fontSize: 42, fontWeight: 900, color: '#0B1F3A', fontFamily: 'Arial, sans-serif' }}>مرشد</h1>
+            <p className="leading-relaxed max-w-[320px] sp-desc" style={{ fontSize: 13, fontWeight: 400, color: '#7A8BA0', fontFamily: 'Arial, sans-serif', lineHeight: '22px' }}>
+              برنامج مكتبي ذكي مصمم لمساعدة المرشد التربوي في إدارة الطلبة، السجلات الإرشادية والوثائق المدرسية الرسمية.
             </p>
           </div>
         </div>
 
-        {/* Divider */}
         <div className="mx-6" style={{ borderTop: '1px solid #E8ECF0' }} />
 
-        {/* Bottom Section */}
+        {/* Bottom */}
         <div className="px-6 pt-4 pb-3">
-          {/* Percentage */}
           <div className="mb-1.5">
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: '#2D8CFF',
-                fontFamily: 'Arial, sans-serif',
-              }}
-            >
-              {progress}%
-            </span>
+            <span className="sp-percent" style={{ fontSize: 13, fontWeight: 700, color: '#2D8CFF', fontFamily: 'Arial, sans-serif' }}>{progress}%</span>
           </div>
-
-          {/* Progress Bar */}
-          <div
-            className="w-full overflow-hidden"
-            style={{
-              height: 6,
-              backgroundColor: '#F0F2F5',
-              borderRadius: 3,
-            }}
-          >
-            <div
-              style={{
-                width: `${progress}%`,
-                height: '100%',
-                backgroundColor: '#2D8CFF',
-                borderRadius: 3,
-                transition: 'width 30ms linear',
-              }}
-            />
+          <div className="w-full overflow-hidden" style={{ height: 6, backgroundColor: '#F0F2F5', borderRadius: 3 }}>
+            <div className="sp-bar-fill" style={{ width: `${progress}%`, height: '100%', backgroundColor: '#2D8CFF', borderRadius: 3, transition: 'width 30ms linear' }} />
           </div>
-
-          {/* Footer */}
           <div className="flex justify-between items-center mt-4">
-            {/* Left — Copyright */}
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 400,
-                color: '#A0B4CC',
-                fontFamily: 'Arial, sans-serif',
-              }}
-            >
-              جميع الحقوق محفوظة لشركة Pandara Tech
-            </span>
-
-            {/* Center — Loading text */}
-            <span
-              className="absolute left-1/2 -translate-x-1/2"
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: '#7A8BA0',
-                fontFamily: 'Arial, sans-serif',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {statusText}
-            </span>
-
-            {/* Right — Version */}
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 400,
-                color: '#A0B4CC',
-                fontFamily: 'Arial, sans-serif',
-              }}
-            >
-              النسخة: v1.0.0
-            </span>
+            <span className="sp-footer" style={{ fontSize: 11, fontWeight: 400, color: '#A0B4CC', fontFamily: 'Arial, sans-serif' }}>جميع الحقوق محفوظة لشركة Pandara Tech</span>
+            <span className="absolute left-1/2 -translate-x-1/2 sp-status" style={{ fontSize: 11, fontWeight: 500, color: '#7A8BA0', fontFamily: 'Arial, sans-serif', whiteSpace: 'nowrap' }}>{statusText}</span>
+            <span className="sp-footer" style={{ fontSize: 11, fontWeight: 400, color: '#A0B4CC', fontFamily: 'Arial, sans-serif' }}>النسخة: v1.0.0</span>
           </div>
         </div>
       </div>

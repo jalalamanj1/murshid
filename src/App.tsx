@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { 
   loadLicense, 
-  saveLicense, 
+  saveLicense,
   loadProfile, 
   loadStudents, 
   loadRecords, 
@@ -70,6 +70,7 @@ import RecordCoversView from './components/RecordCoversView';
 import OfficialLettersView from './components/OfficialLettersView';
 import ExportSection from './components/ExportSection';
 import UpdateSettingsView from './components/UpdateSettingsView';
+import { loadCache, validateAsync, deleteCache as deleteActivationCache } from './lib/pandaraActivation';
 
 import { 
   Users, 
@@ -91,7 +92,7 @@ export default function App() {
   const [flowStage, setFlowStage] = useState<AppFlowStage>('SPLASH');
   const [activeModule, setActiveModule] = useState<ActiveModule>('DASHBOARD');
   
-  const [license, setLicense] = useState<LicenseInfo>({ licenseKey: '', isActivated: false });
+  const [license, setLicense] = useState<LicenseInfo>({ isActivated: false });
   const [profile, setProfile] = useState<CounselorProfile>({
     fullName: '',
     schoolName: '',
@@ -124,6 +125,29 @@ export default function App() {
   
   const [gdriveConnected, setGdriveConnected] = useState(false);
   const [gdriveEmail, setGdriveEmail] = useState('');
+  const [saveFolder, setSaveFolder] = useState(() => {
+    return localStorage.getItem('murshid_save_folder') || '';
+  });
+
+  const handlePickSaveFolder = async () => {
+    try {
+      const api = (window as any).electronAPI;
+      if (api?.pickFolder) {
+        const result = await api.pickFolder();
+        if (result?.canceled) return;
+        if (result?.filePaths?.[0]) {
+          setSaveFolder(result.filePaths[0]);
+          localStorage.setItem('murshid_save_folder', result.filePaths[0]);
+        }
+      } else {
+        const folder = prompt('أدخل مسار مجلد حفظ السجلات:', saveFolder);
+        if (folder && folder.trim()) {
+          setSaveFolder(folder.trim());
+          localStorage.setItem('murshid_save_folder', folder.trim());
+        }
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     const raw = localStorage.getItem('murshid_gdrive_token');
@@ -178,6 +202,25 @@ export default function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Check if license is expired — clears activation so user hits the activation screen
+  const checkExpiration = () => {
+    const lic = loadLicense();
+    if (!lic.isActivated) return;
+    // Load the cache to check expiresAt
+    const raw = localStorage.getItem('pandara_activation');
+    if (!raw) return;
+    try {
+      const cache = JSON.parse(raw);
+      if (cache.expiresAt && new Date(cache.expiresAt).getTime() < Date.now()) {
+        localStorage.removeItem('pandara_activation');
+        const expired: LicenseInfo = { isActivated: false };
+        saveLicense(expired);
+        setLicense(expired);
+        setFlowStage('ACTIVATION');
+      }
+    } catch {}
+  };
+
   // Load configuration on mount
   useEffect(() => {
     const activeLicense = loadLicense();
@@ -191,6 +234,12 @@ export default function App() {
     setSpecialCases(loadSpecialCases());
     setHealthRecords(loadHealthRecords());
     setParentLossRecords(loadParentLossRecords());
+
+    // Check for expired trial on every mount
+    checkExpiration();
+
+    // Periodic expiration check every 15 seconds while app is open
+    const timer = setInterval(checkExpiration, 15000);
 
     // Initialize AI context with user and app info
     try {
@@ -208,9 +257,33 @@ export default function App() {
         e.updateAppContext({ currentModule: 'DASHBOARD', currentPage: 'الرئيسية ولوحة التحكم' });
       }
     } catch {}
+
+    return () => clearInterval(timer);
   }, []);
 
-  const handleSplashComplete = () => {
+  // Periodic trial expiry check (every 30 seconds while in MAIN mode)
+  useEffect(() => {
+    if (flowStage !== 'MAIN') return;
+    const interval = setInterval(async () => {
+      const validation = await validateAsync();
+      if (!validation.isValid) {
+        setLicense({ isActivated: false });
+        setFlowStage('ACTIVATION');
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [flowStage]);
+
+  const handleSplashComplete = async () => {
+    // Validate cache for trial expiry
+    const validation = await validateAsync();
+    if (!validation.isValid) {
+      // Cache expired or invalid — clear license
+      setLicense({ isActivated: false });
+      setFlowStage('ACTIVATION');
+      return;
+    }
+
     if (!license.isActivated) {
       setFlowStage('ACTIVATION');
     } else if (!profile.isRegistered) {
@@ -907,21 +980,22 @@ export default function App() {
 
               {/* Folder Location setting */}
               <div className="space-y-1.5 max-w-lg">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">مجلد حفظ البيانات الافتراضي:</label>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">مجلد حفظ السجلات:</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
                     readOnly 
-                    value="C:\Murshid\Data" 
+                    value={saveFolder || 'سطح المكتب\\سجلات مرشد (الافتراضي)'}
                     className="flex-1 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-600 dark:text-slate-400 focus:outline-none" 
                   />
                   <button 
                     className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 text-xs font-bold rounded text-slate-700 dark:text-slate-300 cursor-pointer"
-                    onClick={() => alert('هذا هو المسار الآمن المثبت تلقائياً على نظام التشغيل.')}
+                    onClick={handlePickSaveFolder}
                   >
-                    تغيير المجلد
+                    تغيير
                   </button>
                 </div>
+                <p className="text-[10px] text-slate-400">جميع سجلات التصدير تُحفظ في هذا المسار افتراضياً.</p>
               </div>
 
               {/* Update Settings */}

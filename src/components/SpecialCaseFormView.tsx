@@ -101,8 +101,7 @@ export default function SpecialCaseFormView({
     const q = studentSearch.toLowerCase();
     return students.filter(s =>
       s.fullName.toLowerCase().includes(q) ||
-      s.classGrade.toLowerCase().includes(q) ||
-      s.section.toLowerCase().includes(q)
+      s.classGrade.toLowerCase().includes(q)
     );
   }, [students, studentSearch]);
 

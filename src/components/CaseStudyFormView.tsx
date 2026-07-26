@@ -137,9 +137,7 @@ export default function CaseStudyFormView({
     if (!q) return students;
     return students.filter(s =>
       (s.fullName || '').toLowerCase().includes(q) ||
-      (s.studentNumber || '').toLowerCase().includes(q) ||
-      (s.classGrade || '').toLowerCase().includes(q) ||
-      (s.section || '').toLowerCase().includes(q)
+      (s.classGrade || '').toLowerCase().includes(q)
     );
   }, [students, studentQuery]);
 

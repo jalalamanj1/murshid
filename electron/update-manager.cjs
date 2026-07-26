@@ -4,7 +4,7 @@ const { BrowserWindow } = require('electron');
 autoUpdater.setFeedURL({
   provider: 'github',
   owner: 'pandara-tech',
-  repo: 'murshid',
+  repo: 'Murshid-Releases',
   releaseType: 'release',
 });
 

@@ -64,8 +64,7 @@ export default function ParentLossRecordFormView({
     const q = studentSearch.toLowerCase();
     return students.filter(s =>
       s.fullName.toLowerCase().includes(q) ||
-      s.classGrade.toLowerCase().includes(q) ||
-      s.section.toLowerCase().includes(q)
+      s.classGrade.toLowerCase().includes(q)
     );
   }, [students, studentSearch]);
 
@@ -73,12 +72,12 @@ export default function ParentLossRecordFormView({
     setStudentId(s.id);
     setStudentName(s.fullName);
     setGrade(s.classGrade);
-    setSection(s.section);
-    setGuardianPhoneAuto(s.parentPhone);
+    setSection('');
+    setGuardianPhoneAuto('');
     setAddress(s.address || '');
     setGuardianName(s.fatherName || '');
-    setGuardianPhoneField(s.parentPhone || '');
-    setGuardianPhone2(s.parentPhone || '');
+    setGuardianPhoneField('');
+    setGuardianPhone2('');
     setShowStudentPicker(false);
     setStudentSearch('');
   };

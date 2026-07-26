@@ -63,6 +63,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: false,
     },
     autoHideMenuBar: true,
     titleBarStyle: 'default',
@@ -230,6 +231,14 @@ ipcMain.handle('dialog:open', async (_event, filters) => {
       { name: 'Excel Files', extensions: ['xlsx', 'xls', 'csv'] },
       { name: 'All Files', extensions: ['*'] },
     ],
+  });
+  return result;
+});
+
+// IPC: Pick folder dialog
+ipcMain.handle('dialog:pick-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
   });
   return result;
 });

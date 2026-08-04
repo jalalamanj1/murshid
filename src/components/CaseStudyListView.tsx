@@ -73,7 +73,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
     return (
       <div className="space-y-4 animate-fade-in" dir="rtl">
         {/* Header */}
-        <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSelectedId(null)}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
@@ -115,7 +115,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
         </div>
 
         {/* Info Grid */}
-        <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">معلومات الحالة</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
@@ -146,7 +146,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
 
         {/* Reviews */}
         {selected.reviews.length > 0 && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">المراجعات ({selected.reviews.length})</h3>
             {selected.reviews.map((rev, i) => (
               <div key={rev.id} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
@@ -162,7 +162,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
 
         {/* Treatment Goals */}
         {selected.treatmentGoals.length > 0 && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">البرنامج العلاجي ({selected.treatmentGoals.length})</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-right">
@@ -189,7 +189,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
 
         {/* Follow-ups */}
         {selected.followUps.length > 0 && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">المتابعات ({selected.followUps.length})</h3>
             {selected.followUps.map((fu, i) => (
               <div key={fu.id} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 space-y-2">
@@ -220,7 +220,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
 
         {/* Closure */}
         {selected.closure.closed && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
             <h3 className="text-xs font-black text-emerald-700 dark:text-emerald-400 pb-2 border-b border-slate-100 dark:border-slate-800">إنهاء الحالة</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
@@ -254,7 +254,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
             <ArrowRight className="w-4 h-4 text-slate-500" />
@@ -270,7 +270,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
       </div>
 
       {/* Search + Filter */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap gap-2">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap gap-2">
         <div className="flex-1 min-w-[200px] relative">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -293,7 +293,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+        <div className="card bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
           <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
             {search ? 'لا توجد نتائج مطابقة للبحث.' : 'لا توجد دراسات حالة بعد. اضغط "تدوين سجل جديد" من لوحة التحكم.'}
@@ -306,7 +306,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
             return (
               <div key={cs.id}
                 onClick={() => setSelectedId(cs.id)}
-                className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all cursor-pointer group">
+                className="card card-hover bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all cursor-pointer group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40 font-mono">

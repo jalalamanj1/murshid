@@ -79,7 +79,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
   if (selected) {
     return (
       <div className="space-y-4 animate-fade-in" dir="rtl">
-        <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSelectedId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
               <ArrowRight className="w-4 h-4 text-slate-500" />
@@ -113,7 +113,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
         </div>
 
         {/* Info Grid */}
-        <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">معلومات السجل</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
@@ -143,7 +143,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
           { label: 'سلوك الطالب ومواظبته', value: selected.studentBehavior },
           { label: 'ملاحظات إضافية', value: selected.additionalNotes },
         ].filter(s => s.value).map(section => (
-          <div key={section.label} className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div key={section.label} className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <HeartOff className="w-4 h-4 text-violet-500 dark:text-violet-400" />
               {section.label}
@@ -158,7 +158,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
   // ── List View ────────────────────────────────────────────────
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
             <ArrowRight className="w-4 h-4 text-slate-500" />
@@ -174,7 +174,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
       </div>
 
       {/* Search */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -185,7 +185,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+        <div className="card bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
           <HeartOff className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
             {search ? 'لا توجد نتائج مطابقة للبحث.' : 'لا توجد سجلات بعد. اضغط "تدوين سجل جديد" من لوحة التحكم.'}
@@ -195,7 +195,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map(r => (
             <div key={r.id} onClick={() => setSelectedId(r.id)}
-              className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-violet-300/50 dark:hover:border-violet-800 transition-all cursor-pointer group">
+              className="card card-hover bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-violet-300/50 dark:hover:border-violet-800 transition-all cursor-pointer group">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2 py-0.5 rounded-md border border-violet-100 dark:border-violet-900/40 font-mono">

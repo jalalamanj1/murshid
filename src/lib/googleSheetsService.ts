@@ -1,6 +1,6 @@
 /**
  * Google Sheets Metadata Service
- * Manages file metadata rows in the Pandara Drive Google Sheet.
+ * Manages file metadata rows in the Google Drive Sheet.
  *
  * Sheet columns:
  *   A: File ID   B: File Name   C: Uploaded By   D: School

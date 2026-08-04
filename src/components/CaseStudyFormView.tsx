@@ -215,7 +215,7 @@ export default function CaseStudyFormView({
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
             {isEdit ? <ClipboardList className="w-5 h-5 text-office-blue dark:text-blue-400" /> : <FilePlus className="w-5 h-5 text-office-blue dark:text-blue-400" />}
@@ -239,7 +239,7 @@ export default function CaseStudyFormView({
       )}
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="card bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="flex border-b border-slate-100 dark:border-slate-800 overflow-x-auto">
           {TABS.map((tab, i) => {
             const Icon = tab.icon;

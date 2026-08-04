@@ -1,10 +1,13 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const url = require('url');
 
 const isDev = !app.isPackaged;
+
+// Keep Chromium and all native Electron surfaces in the application's light theme.
+nativeTheme.themeSource = 'light';
 
 let mainWindow;
 
@@ -43,7 +46,7 @@ p{font-size:13px;color:#94a3b8;margin-bottom:20px;line-height:1.7}
 <div class="icon">🚫</div>
 <h1>تم حظر هذا الجهاز</h1>
 <div class="error-box">${reason}</div>
-<p>للاستفسار، يرجى الاتصال بـ Pandara Tech:<br><bdi dir="ltr">0770 075 8915</bdi></p>
+<p>للاستفسار، يرجى الاتصال بالدعم الفني:<br><bdi dir="ltr">0770 075 8915</bdi></p>
 <div class="hwid">HWID: ${getHwid()}</div>
 </div></body></html>`)}`);
   win.on('closed', () => app.quit());

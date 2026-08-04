@@ -108,7 +108,7 @@ export default function ExportSection({ recordType, recordLabel, records, hasTem
   };
 
   return (
-    <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 mb-4">
+    <div className="card bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 mb-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-[11px] font-black text-slate-700 dark:text-slate-300">

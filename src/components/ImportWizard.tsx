@@ -112,10 +112,10 @@ export default function ImportWizard<T>({
   // ── UI ────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-fade-in">
+      <div className="bg-card rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-fade-in">
 
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-[#1e293b] border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center z-10">
+        <div className="sticky top-0 bg-card border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center z-10">
           <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
             استيراد من Excel
@@ -169,7 +169,7 @@ export default function ImportWizard<T>({
                       <span className={`text-xs font-bold w-1/3 truncate ${isUnmatched ? 'text-rose-700' : 'text-slate-700 dark:text-slate-300'}`} title={header}>{header}</span>
                       <span className="text-slate-400 shrink-0">←</span>
                       <select value={mapped || ''} onChange={e => setMappingFor(header, e.target.value)}
-                        className={`flex-1 bg-white dark:bg-[#1e293b] border rounded-lg px-2 py-1.5 text-xs outline-none ${isUnmatched ? 'border-rose-300' : 'border-slate-200 dark:border-slate-800'}`}>
+                        className={`flex-1 bg-card border rounded-lg px-2 py-1.5 text-xs outline-none ${isUnmatched ? 'border-rose-300' : 'border-slate-200 dark:border-slate-800'}`}>
                         <option value="">{isUnmatched ? '-- عمود غير مرتبط --' : '-- إلغاء الربط --'}</option>
                         <option value="ignore">تجاهل هذا العمود</option>
                         <optgroup label="حقول النموذج">
@@ -184,7 +184,7 @@ export default function ImportWizard<T>({
                       {mapped === 'custom' && (
                         <input type="text" placeholder="اسم الحقل" value={customNames[header] || ''}
                           onChange={e => setCustomNames(p => ({ ...p, [header]: e.target.value }))}
-                          className="w-28 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 text-xs outline-none" />
+                          className="w-28 bg-card border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 text-xs outline-none" />
                       )}
                     </div>
                   );
@@ -192,7 +192,7 @@ export default function ImportWizard<T>({
               </div>
 
               <div className="flex justify-between gap-2 pt-2">
-                <button onClick={onClose} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer">إلغاء</button>
+                <button onClick={onClose} className="bg-bg-hover hover:bg-border-color text-main font-bold px-4 py-2 rounded-lg text-xs cursor-pointer">إلغاء</button>
                 <button onClick={() => setStep('summary')}
                   className="bg-office-blue hover:bg-office-hover text-white font-black px-6 py-2 rounded-lg text-xs cursor-pointer shadow-sm">
                   مراجعة summary ←
@@ -234,7 +234,7 @@ export default function ImportWizard<T>({
               )}
 
               <div className="flex justify-between gap-2">
-                <button onClick={() => setStep('mapping')} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer">رجوع</button>
+                <button onClick={() => setStep('mapping')} className="bg-bg-hover hover:bg-border-color text-main font-bold px-4 py-2 rounded-lg text-xs cursor-pointer">رجوع</button>
                 <button onClick={handleImport}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-2 rounded-lg text-xs cursor-pointer shadow-sm">
                   {summary.missingRequired.length > 0 ? 'متابعة بدون هذه الحقول' : 'تأكيد الاستيراد'}
@@ -250,7 +250,7 @@ export default function ImportWizard<T>({
                 <div className="w-6 h-6 border-2 border-office-blue border-t-transparent rounded-full animate-spin" />
               </div>
               <p className="text-sm font-bold text-slate-600">جاري الاستيراد...</p>
-              <div className="w-full bg-slate-100 rounded-full h-2 max-w-md mx-auto">
+              <div className="w-full bg-card rounded-full h-2 max-w-md mx-auto">
                 <div className="bg-office-blue h-2 rounded-full transition-all duration-200" style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }} />
               </div>
               <p className="text-xs text-slate-400">{progress} / {total}</p>

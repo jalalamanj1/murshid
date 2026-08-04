@@ -39,8 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   onUpdateStatus: (callback) => {
-    ipcRenderer.on('update:status', (_e, status, version) => callback({ status, version }));
-    ipcRenderer.on('update:progress', (_e, percent) => callback({ status: 'progress', percent }));
-    ipcRenderer.on('update:error', (_e, error) => callback({ status: 'error', error }));
+    ipcRenderer.on('update:status', (_e, data) => callback({ status: data.status, version: data.version }));
+    ipcRenderer.on('update:progress', (_e, data) => callback({ status: 'progress', percent: data.percent }));
+    ipcRenderer.on('update:error', (_e, data) => callback({ status: 'error', error: data.error || data.message || JSON.stringify(data) }));
   },
 });

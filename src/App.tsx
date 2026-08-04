@@ -82,10 +82,7 @@ import {
   HelpCircle, 
   AlertCircle,
   Plus,
-  RefreshCw,
   Award,
-  Sun,
-  Moon,
 } from 'lucide-react';
 
 export default function App() {
@@ -187,20 +184,6 @@ export default function App() {
     setGdriveConnected(false);
     setGdriveEmail('');
   };
-
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
 
   // Check if license is expired — clears activation so user hits the activation screen
   const checkExpiration = () => {
@@ -469,6 +452,7 @@ export default function App() {
               });
             }}
             onDeleteStudent={handleDeleteStudent}
+            onResetData={handleClearStudentsAndCases}
             onOpenRecords={() => setActiveModule('RECORDS')}
           />
         );
@@ -877,7 +861,7 @@ export default function App() {
         }
 
         return (
-          <div className="bg-white dark:bg-[#1e293b] p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6 animate-fade-in">
+          <div className="card animate-fade-in">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="space-y-1">
                 <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">السجلات الارشادية</h3>
@@ -899,11 +883,11 @@ export default function App() {
                   <div 
                     key={item.type} 
                     onClick={() => setSelectedRecordType(item.type as RecordType)}
-                    className="border border-slate-200 dark:border-slate-800 hover:border-office-blue/30 dark:hover:border-office-blue/40 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-900/30 flex flex-col justify-between h-36 transition-all hover:shadow-xs cursor-pointer group"
+                    className="border border-slate-200 dark:border-slate-800 hover:border-office-blue/30 dark:hover:border-office-blue/40 p-4 rounded-xl bg-[#F8F6F0] dark:bg-[#F8F6F0] flex flex-col justify-between h-36 transition-all hover:shadow-xs cursor-pointer group"
                   >
                     <div>
                       <div>
-                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-office-blue transition-colors">{item.name}</span>
+                        <span className="text-xs font-black text-main dark:text-slate-100 group-hover:text-office-blue transition-colors">{item.name}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2.5 leading-relaxed">{item.desc}</p>
                     </div>
@@ -942,155 +926,81 @@ export default function App() {
 
       case 'SETTINGS':
         return (
-          <div className="bg-white dark:bg-[#1e293b] p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-            <div className="space-y-1 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">إعدادات نظام مرشد (Murshid)</h3>
-              <p className="text-xs text-slate-400 dark:text-slate-400">تخصيص المظهر، مسارات الحفظ المحمية، ومراجعة تفاصيل ترخيص البرنامج والدعم الفني.</p>
+          <div className="card space-y-6">
+            <div className="border-b border-divider-color pb-4">
+              <h3 className="text-base font-bold text-main">إعدادات نظام مرشد</h3>
+              <p className="text-xs text-muted mt-1">تخصيص مسارات الحفظ المحمية ومراجعة تفاصيل ترخيص البرنامج</p>
             </div>
 
             <div className="space-y-6">
-              {/* Theme Switch Section */}
-              <div className="space-y-2 max-w-lg">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">مظهر واجهة البرنامج (مفتاح السمات):</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setTheme('light')}
-                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                      theme === 'light'
-                        ? 'bg-blue-50 border-office-blue text-office-blue dark:bg-slate-800 dark:border-blue-500 dark:text-blue-400 shadow-sm'
-                        : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Sun className="w-4 h-4" />
-                    <span>المظهر الفاتح الكلاسيكي</span>
-                  </button>
-                  <button
-                    onClick={() => setTheme('dark')}
-                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                      theme === 'dark'
-                        ? 'bg-blue-50/20 border-blue-500 text-blue-500 dark:bg-slate-800 dark:border-blue-500 dark:text-blue-400 shadow-sm'
-                        : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Moon className="w-4 h-4" />
-                    <span>المظهر الداكن المريح للعين</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Folder Location setting */}
               <div className="space-y-1.5 max-w-lg">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">مجلد حفظ السجلات:</label>
+                <label className="form-label">مجلد حفظ السجلات:</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
                     readOnly 
                     value={saveFolder || 'سطح المكتب\\سجلات مرشد (الافتراضي)'}
-                    className="flex-1 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-600 dark:text-slate-400 focus:outline-none" 
+                    className="form-input flex-1"
                   />
                   <button 
-                    className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 text-xs font-bold rounded text-slate-700 dark:text-slate-300 cursor-pointer"
+                    className="btn-secondary !py-1.5 !px-3 text-xs"
                     onClick={handlePickSaveFolder}
                   >
                     تغيير
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-400">جميع سجلات التصدير تُحفظ في هذا المسار افتراضياً.</p>
+                <p className="text-[10px] text-muted">جميع سجلات التصدير تُحفظ في هذا المسار افتراضياً.</p>
               </div>
 
-              {/* Update Settings */}
               <UpdateSettingsView />
 
-              {/* Google Drive Connection Section */}
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-3 max-w-lg">
-                <h4 className="text-xs font-black text-slate-700 dark:text-slate-300">Google Drive</h4>
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div className="space-y-3 max-w-lg">
+                <h4 className="text-xs font-bold text-main">Google Drive</h4>
+                <div className="bg-card rounded-xl p-4 border border-border-color flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${gdriveConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${gdriveConnected ? 'bg-emerald-50 text-success' : 'bg-[#FAFAFA] text-muted border border-border-color'}`}>
                       <Database className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">الاتصال السحابي</p>
-                      <p className="text-[10px] text-slate-400">{gdriveConnected ? gdriveEmail || 'متصل' : 'غير متصل'}</p>
+                      <p className="text-xs font-bold text-main">الاتصال السحابي</p>
+                      <p className="text-[10px] text-muted">{gdriveConnected ? gdriveEmail || 'متصل' : 'غير متصل'}</p>
                     </div>
                   </div>
                   <button
                     onClick={gdriveConnected ? handleGDriveDisconnect : handleGDriveConnect}
-                    className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                      gdriveConnected ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200' : 'bg-office-blue hover:bg-office-hover text-white'
-                    }`}
+                    className={gdriveConnected ? 'btn-danger !py-1.5 !px-4 text-[11px]' : 'btn-primary !py-1.5 !px-4 text-[11px]'}
                   >
                     {gdriveConnected ? 'قطع الاتصال' : 'اتصال'}
                   </button>
                 </div>
               </div>
 
-              {/* Data Maintenance & Reset Section */}
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-3 max-w-lg">
-                <h4 className="text-xs font-black text-rose-700 dark:text-rose-400">صيانة النظام وإدارة البيانات</h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  إذا كنت ترغب في بدء تدوين جديد، يمكنك مسح الطلاب الافتراضيين والحالات الإرشادية المخزنة تلقائياً لتصفير الإحصائيات، مع الاحتفاظ الكامل بسجلات النشاط اليومي وقنوات تيليغرام.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm('هل أنت متأكد من رغبتك في حذف الطلاب والحالات الافتراضية؟ (سيتم تصفير إحصائيات الطلاب والحالات المفتوحة في لوحة التحكم، مع الاحتفاظ بسجلات النشاط اليومي)')) {
-                      handleClearStudentsAndCases();
-                      alert('تمت تهيئة البيانات بنجاح وتصفير الطلاب والحالات الافتراضية.');
-                    }
-                  }}
-                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-xs w-full sm:w-auto justify-center"
-                >
-                  <RefreshCw className="w-4 h-4 shrink-0 animate-spin-hover" />
-                  <span>مسح الطلاب والحالات الافتراضية</span>
-                </button>
-
-              </div>
-
-              {/* About Section & Tech Support */}
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-4">
-                <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">حول النظام والدعم الفني</h4>
-                <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-main">حول النظام</h4>
+                <div className="bg-card rounded-xl p-5 border border-border-color">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-100">اسم النظام:</span>
-                      <span className="text-xs text-office-blue dark:text-blue-400 font-bold">Murshid - مرشد</span>
+                      <span className="text-xs font-bold text-main">اسم النظام:</span>
+                      <span className="text-xs text-primary font-bold">Murshid - مرشد</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-100">الإصدار الحالي:</span>
-                      <span className="text-xs font-mono text-slate-600 dark:text-slate-400">v1.0.0</span>
+                      <span className="text-xs font-bold text-main">الإصدار الحالي:</span>
+                      <span className="text-xs font-mono text-muted">v1.0.8</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-100">الجهة المطورة:</span>
-                      <span className="text-xs text-slate-600 dark:text-slate-300">Pandara Tech</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 border-r border-slate-200 dark:border-slate-800 pr-4">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-200 mb-1">
-                      <span>قسم الدعم الفني والصيانة:</span>
-                    </div>
-                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                      <p className="flex items-center gap-1.5">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">رقم الدعم الفني:</span>
-                        <span className="font-mono text-office-blue dark:text-blue-400 select-all"><bdi dir="ltr">0770 075 8915</bdi></span>
-                      </p>
-                      <p className="flex items-center gap-1.5">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">الموقع الرسمي:</span>
-                        <a
-                          href="https://pandaratech.online"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono text-office-blue dark:text-blue-400 select-all underline decoration-dotted underline-offset-2 hover:text-office-hover dark:hover:text-blue-300 transition-colors"
-                        >
-                          https://pandaratech.online
-                        </a>
-                      </p>
+                      <span className="text-xs font-bold text-main">المطور:</span>
+                      <a
+                        href="https://instagram.com/jalalamanj1"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:text-primary-hover transition-colors underline decoration-dotted underline-offset-2"
+                      >
+                        Jalal Amanj
+                      </a>
                     </div>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         );
@@ -1136,7 +1046,7 @@ export default function App() {
       STUDENTS: 'إدارة الطلاب',
       RECORDS: 'السجلات الإرشادية',
       TEMPLATES: 'أغلفة سجلات الإرشاد',
-      PT_DRIVE: 'Pandara Drive',
+      PT_DRIVE: 'Google Drive',
       OFFICIAL_LETTERS: 'مخاطبات رسمية',
       BACKUP: 'النسخ الاحتياطي',
       SETTINGS: 'الإعدادات',

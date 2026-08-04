@@ -524,7 +524,7 @@ export default function RecordsListView({
   return (
     <div className="space-y-6">
       {/* Header Panel */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
           <button 
             onClick={onBack}
@@ -576,7 +576,7 @@ export default function RecordsListView({
 
       {/* Add / Edit Form */}
       {showAddForm && (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1e293b] p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 animate-fade-in">
+        <form onSubmit={handleSubmit} className="card bg-white dark:bg-[#1e293b] p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 animate-fade-in">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
             <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-office-blue" />
@@ -597,35 +597,35 @@ export default function RecordsListView({
             <div className="space-y-4">
               <div className="border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-[#1e293b] shadow-xs">
                 {/* Top yellow ledger header block */}
-                <div className="grid grid-cols-2 bg-[#fef3c7] dark:bg-amber-950/20 border-b border-slate-300 dark:border-slate-700 text-xs font-black p-3 text-slate-900 dark:text-slate-200 gap-4">
+                <div className="grid grid-cols-2 bg-[#FFF7ED] border-b border-border-color text-xs font-black p-3 text-slate-900 gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-[13px] text-amber-900 dark:text-amber-400">اليوم:</span>
+                    <span className="font-extrabold text-[13px] text-slate-900">اليوم:</span>
                     <select 
                       value={day}
                       onChange={(e) => setDay(e.target.value)}
                       required
-                      className="bg-transparent border-b border-dashed border-amber-400 dark:border-amber-700 text-slate-900 dark:text-slate-100 font-bold outline-none px-2 py-0.5 focus:border-office-blue text-xs w-full max-w-[150px] cursor-pointer"
+                      className="bg-transparent border-b border-dashed border-primary text-slate-900 font-bold outline-none px-2 py-0.5 focus:border-office-blue text-xs w-full max-w-[150px] cursor-pointer"
                     >
-                      <option value="" className="bg-white dark:bg-[#1e293b]">-- اختر اليوم --</option>
+                      <option value="" className="bg-white">-- اختر اليوم --</option>
                       {daysArabicList.map(d => (
-                        <option key={d} value={d} className="bg-white dark:bg-[#1e293b]">{d}</option>
+                        <option key={d} value={d} className="bg-white">{d}</option>
                       ))}
                     </select>
                   </div>
 
                   <div className="flex items-center gap-2 justify-end sm:justify-start">
-                    <span className="font-extrabold text-[13px] text-amber-900 dark:text-amber-400">التاريخ:</span>
+                    <span className="font-extrabold text-[13px] text-slate-900">التاريخ:</span>
                     <input 
                       type="date"
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="bg-transparent border-b border-dashed border-amber-400 dark:border-amber-700 text-slate-900 dark:text-slate-100 font-black outline-none px-2 py-0.5 focus:border-office-blue text-xs font-mono w-full max-w-[160px]"
+                      className="bg-transparent border-b border-dashed border-primary text-slate-900 font-black outline-none px-2 py-0.5 focus:border-office-blue text-xs font-mono w-full max-w-[160px]"
                     />
                     <button 
                       type="button"
                       onClick={handleAutoFill}
-                      className="p-1 text-office-blue dark:text-blue-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 rounded-full transition-colors cursor-pointer"
+                      className="p-1 text-primary hover:bg-[#FFF7ED] rounded-full transition-colors cursor-pointer"
                       title="تعبئة تلقائية لليوم والتاريخ الحالي"
                     >
                       <Sparkles className="w-4 h-4" />
@@ -637,7 +637,7 @@ export default function RecordsListView({
                 <div className="overflow-x-auto">
                   <table className="w-full text-center border-collapse min-w-[600px]">
                     <thead>
-                      <tr className="bg-[#e0f2fe] dark:bg-blue-950/20 border-b border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-extrabold text-xs">
+                      <tr className="bg-[#FFF7ED] border-b border-border-color text-slate-900 font-bold text-xs">
                         <th className="py-2.5 px-3 border-l border-slate-300 dark:border-slate-700 text-center font-extrabold text-[13px] w-[25%]">النشاط</th>
                         <th className="py-2.5 px-3 border-l border-slate-300 dark:border-slate-700 text-center font-extrabold text-[13px] w-[20%]">المكان</th>
                         <th className="py-2.5 px-3 text-center font-extrabold text-[13px] w-[55%]">التفاصيل</th>
@@ -898,7 +898,7 @@ export default function RecordsListView({
               return (
                 <div 
                   key={rec.id} 
-                  className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all duration-150 animate-fade-in"
+                  className="card card-hover border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all duration-150 animate-fade-in"
                 >
                   {/* Card Header Bar */}
                   <div className="bg-slate-50 dark:bg-[#0f172a] px-4 py-3.5 flex justify-between items-center border-b border-slate-200 dark:border-slate-800">
@@ -968,16 +968,16 @@ export default function RecordsListView({
                     {/* Visual Ministerial Logbook representation */}
                     <div className="border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-[#1e293b] shadow-xs">
                       {/* Top yellow ledger header block */}
-                      <div className="grid grid-cols-2 bg-[#fef3c7] dark:bg-amber-950/20 border-b border-slate-300 dark:border-slate-700 text-xs font-black p-3 text-slate-900 dark:text-slate-200">
+                      <div className="grid grid-cols-2 bg-[#FFF7ED] border-b border-border-color text-xs font-black p-3 text-slate-900">
                         <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-[13px] text-amber-900 dark:text-amber-400">اليوم:</span>
-                          <span className="font-black text-[13px] border-b border-dashed border-amber-400 dark:border-amber-800 pb-0.5 px-2 text-slate-800 dark:text-slate-100">
+                          <span className="font-extrabold text-[13px] text-slate-900">اليوم:</span>
+                          <span className="font-black text-[13px] border-b border-dashed border-primary pb-0.5 px-2 text-slate-900">
                             {rec.day || 'غير محدد'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 justify-end sm:justify-start">
-                          <span className="font-extrabold text-[13px] text-amber-900 dark:text-amber-400">التاريخ:</span>
-                          <span className="font-mono font-black text-[13px] border-b border-dashed border-amber-400 dark:border-amber-800 pb-0.5 px-2 text-slate-800 dark:text-slate-100">
+                          <span className="font-extrabold text-[13px] text-slate-900">التاريخ:</span>
+                          <span className="font-mono font-black text-[13px] border-b border-dashed border-primary pb-0.5 px-2 text-slate-900">
                             {rec.date}
                           </span>
                         </div>
@@ -987,7 +987,7 @@ export default function RecordsListView({
                       <div className="overflow-x-auto">
                         <table className="w-full text-center border-collapse min-w-[500px]">
                           <thead>
-                            <tr className="bg-[#e0f2fe] dark:bg-blue-950/30 border-b border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-extrabold text-xs">
+                            <tr className="bg-[#FFF7ED] border-b border-border-color text-slate-900 font-bold text-xs">
                               <th className="py-2.5 px-3 border-l border-slate-300 dark:border-slate-700 text-center font-extrabold text-[13px] w-[25%]">النشاط</th>
                               <th className="py-2.5 px-3 border-l border-slate-300 dark:border-slate-700 text-center font-extrabold text-[13px] w-[20%]">المكان</th>
                               <th className="py-2.5 px-3 text-center font-extrabold text-[13px] w-[55%]">التفاصيل</th>
@@ -1035,7 +1035,7 @@ export default function RecordsListView({
             return (
               <div 
                 key={rec.id} 
-                className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all duration-150 animate-fade-in"
+                className="card card-hover border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all duration-150 animate-fade-in"
               >
                 {/* Standard Card Title Header Bar */}
                 <div className="bg-slate-50 dark:bg-[#0f172a] px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-slate-800">

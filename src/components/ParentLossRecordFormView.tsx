@@ -134,7 +134,7 @@ export default function ParentLossRecordFormView({
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-violet-50 dark:bg-violet-950/40 rounded-xl">
             {isEdit ? <FileTextIcon className="w-5 h-5 text-violet-500 dark:text-violet-400" /> : <FilePlus className="w-5 h-5 text-violet-500 dark:text-violet-400" />}
@@ -164,7 +164,7 @@ export default function ParentLossRecordFormView({
       )}
 
       {/* Student Selection */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
         <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
           <User className="w-4 h-4 text-violet-500 dark:text-violet-400" />
           بيانات الطالب
@@ -245,7 +245,7 @@ export default function ParentLossRecordFormView({
       )}
 
       {/* ═══ FORM FIELDS ═══ */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
         <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
           <HeartOff className="w-4 h-4 text-violet-500 dark:text-violet-400" />
           بيانات الفقدان

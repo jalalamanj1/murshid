@@ -317,7 +317,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
       </div>
 
       {/* ── Page Header ────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
             <Database className="w-5 h-5 text-office-blue dark:text-blue-400" />
@@ -330,7 +330,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
       </div>
 
       {/* ── Local Backup Section ───────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
           <HardDrive className="w-4 h-4 text-office-blue dark:text-blue-400" />
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100">النسخ الاحتياطي المحلي</h3>
@@ -338,15 +338,15 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
 
         {/* Info row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">مجلد النسخ الاحتياطي</span>
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono break-all">{settings.localFolder}</span>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">آخر نسخة احتياطية</span>
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{fmtDate(settings.lastLocalBackup)}</span>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">عدد النسخ المحفوظة</span>
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{settings.backupHistory.filter(h => h.type === 'LOCAL').length}</span>
           </div>
@@ -354,7 +354,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
 
         {/* Folder display + change */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-slate-50 dark:bg-slate-900/50 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
+          <div className="flex-1 bg-[#F8F6F0] rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
             <FolderOpen className="w-3.5 h-3.5 text-slate-400 inline ml-2" />
             <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{settings.localFolder}</span>
           </div>
@@ -399,7 +399,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
       </div>
 
       {/* ── Google Drive Section ───────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
           <Cloud className="w-4 h-4 text-office-blue dark:text-blue-400" />
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100">النسخ الاحتياطي إلى Google Drive</h3>
@@ -407,7 +407,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
 
         {/* Connection status */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">حالة الاتصال</span>
             <div className="flex items-center gap-2">
               {gDrive.connected ? (
@@ -423,19 +423,19 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
               )}
             </div>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">الحساب المتصل</span>
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{gDrive.email || 'غير متصل'}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">آخر نسخة سحابية</span>
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{fmtDate(settings.lastCloudBackup)}</span>
           </div>
           {storageInfo && (
-            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+            <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">مساحة التخزين</span>
               <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{storageInfo.used} / {storageInfo.total}</span>
             </div>
@@ -497,7 +497,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
       </div>
 
       {/* ── Automatic Backups ──────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
           <Clock className="w-4 h-4 text-office-blue dark:text-blue-400" />
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100">النسخ الاحتياطي التلقائي</h3>
@@ -536,7 +536,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
       </div>
 
       {/* ── Backup History ─────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="card bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <button
           onClick={() => setShowHistory(!showHistory)}
           className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"

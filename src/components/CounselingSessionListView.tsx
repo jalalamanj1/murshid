@@ -50,7 +50,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
     return (
       <div className="space-y-4 animate-fade-in" dir="rtl">
         {/* Header */}
-        <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSelectedId(null)}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
@@ -81,7 +81,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
         </div>
 
         {/* Info Grid */}
-        <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">معلومات الجلسة</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
@@ -101,7 +101,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
         </div>
 
         {/* Session Title */}
-        <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+        <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
             <ListChecks className="w-4 h-4 text-office-blue dark:text-blue-400" />
             عنوان الجلسة
@@ -111,7 +111,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
 
         {/* General Objective */}
         {selected.generalObjective && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <Target className="w-4 h-4 text-office-blue dark:text-blue-400" />
               الهدف العام
@@ -122,7 +122,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
 
         {/* Specific Objectives */}
         {selected.specificObjectives && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <Target className="w-4 h-4 text-emerald-500" />
               الأهداف الخاصة
@@ -133,7 +133,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
 
         {/* Activities & Strategies */}
         {selected.activitiesStrategies && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <Activity className="w-4 h-4 text-office-blue dark:text-blue-400" />
               الأنشطة والاستراتيجيات الإرشادية
@@ -144,7 +144,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
 
         {/* Activity */}
         {selected.activity && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <Activity className="w-4 h-4 text-amber-500" />
               النشاط
@@ -155,7 +155,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
 
         {/* Evaluation */}
         {selected.evaluation && (
-          <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <ListChecks className="w-4 h-4 text-purple-500" />
               التقويم والمتابعة
@@ -171,7 +171,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
             <ArrowRight className="w-4 h-4 text-slate-500" />
@@ -187,7 +187,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
       </div>
 
       {/* Search */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -198,7 +198,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+        <div className="card bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
           <MessageCircle className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
             {search ? 'لا توجد نتائج مطابقة للبحث.' : 'لا توجد جلسات إرشادية بعد. اضغط "تدوين سجل جديد" من لوحة التحكم.'}
@@ -210,7 +210,7 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
             const isExpanded = expandedId === s.id;
             return (
               <div key={s.id}
-                className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all group">
+                className="card card-hover bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all group">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40 font-mono">

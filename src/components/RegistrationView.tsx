@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState } from 'react';
 import { User, School, Calendar, MapPin, Sparkles, BookOpen } from 'lucide-react';
 import { CounselorProfile } from '../types';
@@ -57,49 +52,39 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50">
       <div 
         id="registration_form"
-        className="w-[580px] bg-white border border-slate-300 rounded-lg shadow-2xl overflow-hidden flex flex-col text-slate-800"
+        className="w-[580px] bg-card rounded-2xl shadow-modal border border-border-color overflow-hidden flex flex-col"
         dir="rtl"
       >
-        {/* Windows Form Title Bar Style */}
-        <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex justify-between items-center select-none">
-          <div className="flex items-center gap-2">
-            <School className="w-4 h-4 text-office-blue" />
-            <span className="text-xs font-bold text-slate-700">إعداد البرنامج لأول مرة - تسجيل المرشد والمدرسة</span>
-          </div>
-          <div className="flex gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-slate-300 block"></span>
-            <span className="w-3 h-3 rounded-full bg-slate-300 block"></span>
-            <span className="w-3 h-3 rounded-full bg-slate-400 block"></span>
+        <div className="bg-[#FFF7ED] px-5 py-3 border-b border-border-color flex items-center gap-2">
+          <School className="w-4 h-4 text-primary" />
+          <span className="text-xs font-bold text-main">إعداد البرنامج لأول مرة - تسجيل المرشد والمدرسة</span>
+        </div>
+
+        <div className="bg-primary p-6 text-white">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-2.5 rounded-xl">
+              <Sparkles className="w-8 h-8 text-white/90" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">مرحباً بك في مُرْشِد!</h2>
+              <p className="text-xs text-white/80 mt-0.5">يرجى ملء البيانات التالية بدقة لتكوين هوية وسجلات البرنامج على حاسوبك.</p>
+            </div>
           </div>
         </div>
 
-        {/* Header Ribbon Banner */}
-        <div className="bg-gradient-to-r from-office-blue to-office-hover p-5 text-white flex items-center gap-4">
-          <div className="bg-white/15 p-2 rounded-lg">
-            <Sparkles className="w-8 h-8 text-blue-100" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">مرحباً بك في مُرْشِد!</h2>
-            <p className="text-xs text-blue-100 mt-0.5">يرجى ملء البيانات التالية بدقة لتكوين هوية وسجلات البرنامج على حاسوبك.</p>
-          </div>
-        </div>
-
-        {/* Form Details */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 flex-1">
           {error && (
-            <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded p-3">
-              ⚠️ {error}
+            <div className="text-xs text-danger bg-rose-50 border border-rose-200 rounded-xl p-3">
+              {error}
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Counselor Name */}
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5 col-span-2">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5" htmlFor="c_name">
-                <User className="w-3.5 h-3.5 text-office-blue" />
+              <label className="form-label" htmlFor="c_name">
                 الاسم الكامل واللقب للمرشد التربوي:
               </label>
               <input
@@ -108,69 +93,57 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
                 placeholder="أكتب اسمك الثلاثي الكامل واللقب..."
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-office-blue focus:bg-white text-slate-900"
+                className="form-input"
               />
             </div>
 
-            {/* Counselor Gender */}
             <div className="space-y-1.5 col-span-2">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-office-blue" />
-                صفة المرشد:
-              </label>
+              <label className="form-label">صفة المرشد:</label>
               <div className="flex gap-3">
-                <label className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-300 rounded px-3 py-2 text-xs text-slate-800 flex-1">
+                <label className="flex items-center gap-2 cursor-pointer bg-[#FAFAFA] border border-border-color rounded-xl px-4 py-2.5 text-xs text-slate-900 flex-1 transition-colors hover:border-primary has-[:checked]:border-primary has-[:checked]:bg-[#FFF7ED]">
                   <input
                     type="radio"
                     name="counselorGender"
                     value="MALE"
                     checked={counselorGender === 'MALE'}
                     onChange={() => setCounselorGender('MALE')}
-                    className="accent-office-blue"
+                    className="accent-primary"
                   />
                   مرشد تربوي
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-300 rounded px-3 py-2 text-xs text-slate-800 flex-1">
+                <label className="flex items-center gap-2 cursor-pointer bg-[#FAFAFA] border border-border-color rounded-xl px-4 py-2.5 text-xs text-slate-900 flex-1 transition-colors hover:border-primary has-[:checked]:border-primary has-[:checked]:bg-[#FFF7ED]">
                   <input
                     type="radio"
                     name="counselorGender"
                     value="FEMALE"
                     checked={counselorGender === 'FEMALE'}
                     onChange={() => setCounselorGender('FEMALE')}
-                    className="accent-office-blue"
+                    className="accent-primary"
                   />
                   مرشدة تربوية
                 </label>
               </div>
             </div>
 
-            {/* School Name */}
             <div className="space-y-1.5 col-span-2">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5" htmlFor="sch_name">
-                <School className="w-3.5 h-3.5 text-office-blue" />
-                اسم المدرسة / المؤسسة التربوية:
-              </label>
+              <label className="form-label" htmlFor="sch_name">اسم المدرسة / المؤسسة التربوية:</label>
               <input
                 id="sch_name"
                 type="text"
                 placeholder="مثال: مدرسة بابل للبنين، ثانوية المعرفة للبنات..."
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-office-blue focus:bg-white text-slate-900"
+                className="form-input"
               />
             </div>
 
-            {/* Province Select */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5" htmlFor="prov">
-                <MapPin className="w-3.5 h-3.5 text-office-blue" />
-                المحافظة (المديرية العامة للتربية):
-              </label>
+              <label className="form-label" htmlFor="prov">المحافظة (المديرية العامة للتربية):</label>
               <select
                 id="prov"
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-office-blue focus:bg-white text-slate-900"
+                className="form-input"
               >
                 {IRAQ_PROVINCES.map((prov) => (
                   <option key={prov} value={prov}>{prov}</option>
@@ -178,16 +151,13 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
               </select>
             </div>
 
-            {/* School Type Select */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5" htmlFor="sch_type">
-                المرحلة التعليمية:
-              </label>
+              <label className="form-label" htmlFor="sch_type">المرحلة التعليمية:</label>
               <select
                 id="sch_type"
                 value={schoolType}
                 onChange={(e) => setSchoolType(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-office-blue focus:bg-white text-slate-900"
+                className="form-input"
               >
                 <option value="PRIMARY">المرحلة الابتدائية</option>
                 <option value="MIDDLE">المرحلة المتوسطة</option>
@@ -196,11 +166,10 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
               </select>
             </div>
 
-            {/* Grade Preview */}
-            <div className="col-span-2 bg-blue-50/50 border border-blue-100 rounded-lg p-3 space-y-2">
+            <div className="col-span-2 bg-[#FFF7ED] border border-primary/20 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-office-blue" />
-                <span className="text-[11px] font-bold text-slate-700">
+                <BookOpen className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-bold text-main">
                   الصفوف المتاحة في {STAGE_LABELS[schoolType]}:
                 </span>
               </div>
@@ -208,28 +177,24 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
                 {GetGrades(schoolType).map((grade) => (
                   <span
                     key={grade}
-                    className="px-2 py-0.5 bg-white border border-blue-200 rounded text-[10px] font-bold text-office-blue"
+                    className="px-2.5 py-1 bg-card border border-primary/30 rounded-lg text-[10px] font-bold text-primary"
                   >
                     {grade}
                   </span>
                 ))}
               </div>
-              <p className="text-[9px] text-slate-500">
+              <p className="text-[9px] text-muted">
                 سيتم تقييد قائمة الصفوف في جميع استمارات التسجيل والبحث والسجلات الإرشادية بهذه الصفوف تحديداً.
               </p>
             </div>
 
-            {/* Academic Year Select */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5" htmlFor="acad_yr">
-                <Calendar className="w-3.5 h-3.5 text-office-blue" />
-                العام الدراسي الحالي:
-              </label>
+              <label className="form-label" htmlFor="acad_yr">العام الدراسي الحالي:</label>
               <select
                 id="acad_yr"
                 value={academicYear}
                 onChange={(e) => setAcademicYear(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-office-blue focus:bg-white text-slate-900"
+                className="form-input"
               >
                 <option value="2025-2026">2025 - 2026</option>
                 <option value="2026-2027">2026 - 2027</option>
@@ -237,10 +202,10 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
               </select>
             </div>
 
-            <div className="flex items-end justify-end pt-5">
+            <div className="flex items-end justify-end pt-3">
               <button
                 type="submit"
-                className="w-full bg-office-blue hover:bg-office-hover active:bg-office-hover text-white font-bold py-2.5 px-4 rounded text-xs shadow-sm cursor-pointer transition-colors"
+                className="btn-primary w-full !py-3 text-xs"
               >
                 حفظ وإعداد هوية البرنامج المكتبي
               </button>
@@ -248,9 +213,16 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
           </div>
         </form>
 
-        {/* Professional Trademark Footer */}
-        <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-center text-[10px] text-slate-400">
-          برمجة وحقوق الملكية لبرنامج مرشد © Pandara Tech لإلكترونيات الأنظمة المكتبية والبرمجيات المتقدمة.
+        <div className="bg-[#FAFAFA] border-t border-border-color px-6 py-3 text-center text-[10px] text-muted">
+          برمجة وحقوق الملكية لبرنامج مرشد ©{' '}
+          <a
+            href="https://instagram.com/jalalamanj1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary-hover underline decoration-dotted underline-offset-2"
+          >
+            Jalal Amanj
+          </a>
         </div>
       </div>
     </div>

@@ -69,13 +69,13 @@ export default function UpdateSettingsView() {
 
   const progressBar = status.type === 'downloading' && (
     <div className="space-y-1.5">
-      <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+      <div className="w-full h-2 bg-divider-color rounded-full overflow-hidden">
         <div
           className="h-full bg-office-blue rounded-full transition-all duration-300"
           style={{ width: `${status.percent}%` }}
         />
       </div>
-      <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+      <div className="flex justify-between text-[10px] text-muted">
         <span>{status.percent}%</span>
         {status.bytesPerSecond && (
           <span>{Math.round(status.bytesPerSecond / 1024)} KB/s</span>
@@ -97,7 +97,7 @@ export default function UpdateSettingsView() {
       case 'error':
         return <AlertTriangle className="w-5 h-5 text-rose-500" />;
       default:
-        return <ArrowUpCircle className="w-5 h-5 text-slate-400" />;
+        return <ArrowUpCircle className="w-5 h-5 text-muted" />;
     }
   };
 
@@ -122,37 +122,37 @@ export default function UpdateSettingsView() {
 
   if (!isElectron) {
     return (
-      <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-3">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+      <div className="card border border-border-color rounded-xl p-5 space-y-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-main">
           <ArrowUpCircle className="w-4 h-4" />
           <span>تحديثات البرنامج</span>
         </div>
-        <p className="text-[11px] text-slate-400">ميزة التحديث التلقائي متاحة فقط في تطبيق المرشد (مرشد).</p>
+        <p className="text-[11px] text-muted">ميزة التحديث التلقائي متاحة فقط في تطبيق المرشد (مرشد).</p>
       </div>
     );
   }
 
   return (
-    <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+    <div className="card border border-border-color rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ArrowUpCircle className="w-4 h-4 text-office-blue" />
-          <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">تحديثات البرنامج</h4>
+          <h4 className="text-xs font-black text-main">تحديثات البرنامج</h4>
         </div>
         <button
           onClick={handleCheck}
           disabled={status.type === 'checking' || status.type === 'downloading'}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-office-blue/10 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 border border-office-blue/20 dark:border-blue-900/40 hover:bg-office-blue/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-office-blue/10 text-office-blue border border-office-blue/20 hover:bg-office-blue/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${status.type === 'checking' ? 'animate-spin' : ''}`} />
           <span>التحقق من التحديثات</span>
         </button>
       </div>
 
-      <div className="flex items-start gap-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+      <div className="flex items-start gap-3 bg-bg-hover rounded-lg p-3 border border-divider-color">
         <div className="mt-0.5 shrink-0">{statusIcon()}</div>
         <div className="flex-1 min-w-0 space-y-2">
-          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{statusText()}</p>
+          <p className="text-[11px] text-muted leading-relaxed">{statusText()}</p>
           {progressBar}
           {status.type === 'downloaded' && (
             <button

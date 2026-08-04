@@ -259,7 +259,7 @@ export default function OfficialLettersView() {
   if (!token) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
-        <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-8 max-w-md w-full text-center space-y-4">
+        <div className="card bg-card rounded-2xl border border-border-color shadow-xs p-8 max-w-md w-full text-center space-y-4">
           <FolderOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
           <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">الاتصال بالمجلد السحابي</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -284,7 +284,7 @@ export default function OfficialLettersView() {
   return (
     <div className="p-6 space-y-4" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="card bg-card rounded-2xl border border-border-color shadow-xs p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-xl text-blue-600">
             <FileText className="w-5 h-5" />
@@ -302,7 +302,7 @@ export default function OfficialLettersView() {
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم..."
-              className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pr-9 pl-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-office-blue w-48"
+              className="bg-card border border-border-color rounded-xl pr-9 pl-3 py-2 text-[11px] font-bold text-main focus:outline-none focus:border-office-blue w-48"
             />
           </div>
 
@@ -358,7 +358,7 @@ export default function OfficialLettersView() {
             const Icon = getFileIcon(file.mimeType);
             const color = getFileColor(file.mimeType);
             return (
-              <div key={file.id} onClick={() => setSelectedFile(file)} className="bg-white dark:bg-[#1e293b] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-all overflow-hidden group cursor-pointer">
+              <div key={file.id} onClick={() => setSelectedFile(file)} className="card card-hover bg-white dark:bg-[#1e293b] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-all overflow-hidden group cursor-pointer">
                 {/* Thumbnail */}
                 <div className="aspect-[4/3] bg-slate-50 dark:bg-slate-900 flex items-center justify-center overflow-hidden relative">
                   {file.hasThumbnail && file.thumbnailLink ? (

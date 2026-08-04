@@ -113,7 +113,7 @@ export default function RecordCoversView() {
       {/* Model Grid — 2 cols desktop, 1 col mobile */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {models.map(model => (
-          <div key={model.id} className="justify-self-center bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden w-fit">
+          <div key={model.id} className="card justify-self-center bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden w-fit">
             {/* Preview Image */}
             <div className="bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden">
               {previews[model.id] ? (

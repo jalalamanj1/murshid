@@ -39,7 +39,7 @@ export default function SpecialCaseCategorySelectView({ onSelect, onCancel }: Pr
   return (
     <div className="space-y-5 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
         <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
           <GraduationCap className="w-5 h-5 text-office-blue dark:text-blue-400" />
         </div>

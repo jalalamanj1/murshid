@@ -170,7 +170,7 @@ export default function CaseStudyKeyGuideView({ students, profile, caseStudies, 
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between print:hidden">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between print:hidden">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
             <ArrowRight className="w-4 h-4 text-slate-500" />
@@ -200,7 +200,7 @@ export default function CaseStudyKeyGuideView({ students, profile, caseStudies, 
       </div>
 
       {/* Search + Filters */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap gap-2 items-center print:hidden">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap gap-2 items-center print:hidden">
         <div className="flex-1 min-w-[200px] relative">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -219,7 +219,7 @@ export default function CaseStudyKeyGuideView({ students, profile, caseStudies, 
       </div>
 
       {/* Data Grid */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="card bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         {sorted.length === 0 ? (
           <div className="p-8 text-center">
             <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />

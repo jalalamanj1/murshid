@@ -236,7 +236,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
     return (
       <div className="space-y-4 animate-fade-in" dir="rtl">
         {/* Header */}
-        <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSelectedId(null)}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
@@ -277,7 +277,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
         </div>
 
         {/* Info Grid */}
-        <div className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">معلومات السجل</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
@@ -315,7 +315,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
           { label: 'المشكلات التي يعاني منها الطالب', value: selected.studentProblems },
           { label: 'السلوك التوافقي للطالب مع أقرانه', value: selected.peerBehavior },
         ].filter(s => s.value).map(section => (
-          <div key={section.label} className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div key={section.label} className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-office-blue dark:text-blue-400" />
               {section.label}
@@ -328,7 +328,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
         {isDelayed && [
           { label: 'سبب التأخر', value: selected.delayReason },
         ].filter(s => s.value).map(section => (
-          <div key={section.label} className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div key={section.label} className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-500" />
               {section.label}
@@ -342,7 +342,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
           { label: 'الإجراءات', value: selected.procedures },
           { label: 'التقويم والمتابعة', value: selected.evaluation },
         ].filter(s => s.value).map(section => (
-          <div key={section.label} className="bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+          <div key={section.label} className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
             <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
               <DetailIcon className={`w-4 h-4 ${isGifted ? 'text-office-blue dark:text-blue-400' : 'text-amber-500'}`} />
               {section.label}
@@ -358,7 +358,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
   return (
     <div className="space-y-4 animate-fade-in" dir="rtl">
       {/* Header */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
             <ArrowRight className="w-4 h-4 text-slate-500" />
@@ -412,7 +412,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
       </div>
 
       {/* Search + Filter */}
-      <div className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap gap-2">
+      <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap gap-2">
         <div className="flex-1 min-w-[200px] relative">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -437,7 +437,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+        <div className="card bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
           <GraduationCap className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
             {search ? 'لا توجد نتائج مطابقة للبحث.' : 'لا توجد سجلات في هذا القسم بعد. استخدم زر "تدوين سجل جديد" لإضافة سجل.'}
@@ -452,7 +452,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
             return (
               <div key={r.id}
                 onClick={() => setSelectedId(r.id)}
-                className="bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all cursor-pointer group">
+                className="card card-hover bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all cursor-pointer group">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40 font-mono">

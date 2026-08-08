@@ -70,7 +70,7 @@ function createWindow() {
     },
     autoHideMenuBar: true,
     titleBarStyle: 'default',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0B0E15',
     show: false,
   });
 

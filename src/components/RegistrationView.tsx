@@ -216,7 +216,7 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
         <div className="bg-[#FAFAFA] border-t border-border-color px-6 py-3 text-center text-[10px] text-muted">
           برمجة وحقوق الملكية لبرنامج مرشد ©{' '}
           <a
-            href="https://instagram.com/jalalamanj1"
+            href="https://jalalamanj.online"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary-hover underline decoration-dotted underline-offset-2"

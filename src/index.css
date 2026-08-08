@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Dark utilities must only activate when the app explicitly adds .dark.
-   Murshid is light-only, so OS color preference cannot change the interface. */
+   Murshid ships with a dark design system as default and a light fallback. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @font-face {
@@ -50,37 +50,70 @@
 @theme {
   --font-sans: "Cairo", sans-serif;
   --font-mono: "Cairo", ui-monospace, monospace;
+
   --color-office-blue: var(--office-blue);
   --color-office-hover: var(--office-hover);
   --color-office-bg: var(--office-bg);
   --color-sidebar-bg: var(--sidebar-bg);
+  --color-main-bg: var(--bg-main);
   --color-text-main: var(--text-main);
   --color-text-sec: var(--text-sec);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-bg: var(--primary-bg);
+  --color-primary-border: var(--primary-border);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-card: var(--bg-card);
+  --color-card-elevated: var(--bg-card-elevated);
+  --color-hover: var(--bg-hover);
+  --color-bg-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-divider-color: var(--divider-color);
   --color-border-color: var(--border-color);
-  --color-primary: var(--office-blue);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-warning: var(--warning);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
 }
 
+/* ───────────────────────── Light Theme (default fallback) ───────────────────────── */
 :root {
   color-scheme: light;
-  --office-blue: #D97706;
-  --office-hover: #C56B05;
+  --office-blue: #F28C24;
+  --office-hover: #FF9D2E;
   --office-bg: #FAFAFA;
   --sidebar-bg: #FFFFFF;
-  --text-main: #000000;
+  --bg-main: #FAFAFA;
+  --text-main: #1A2027;
   --text-sec: #555555;
+  --text-secondary: #555555;
   --border-color: #E8E8E8;
   --bg-card: #FCFCFC;
+  --bg-card-elevated: #FFFFFF;
   --bg-hover: #F7F7F7;
+  --bg-active: #FFF7ED;
   --divider-color: #EFEFEF;
   --text-muted: #777777;
   --danger: #DC2626;
+  --danger-bg: #FEF2F2;
   --success: #16A34A;
+  --warning: #D97706;
+  --primary: #F28C24;
+  --primary-hover: #FF9D2E;
+  --primary-active: #D97706;
+  --primary-bg: #FFF7ED;
+  --primary-border: #F5C58A;
   --shadow-card: 0 6px 20px rgba(0,0,0,0.05);
   --shadow-popup: 0 8px 28px rgba(0,0,0,0.07);
   --shadow-modal: 0 12px 40px rgba(0,0,0,0.09);
   --input-bg: #FFFFFF;
   --input-border: #E8E8E8;
-  --input-text: #000000;
+  --input-text: #1A2027;
+  --focus-border: #F28C24;
   --table-header: #F5F5F5;
   --table-row: #FCFCFC;
   --table-row-alt: #F7F7F7;
@@ -89,7 +122,58 @@
   --scrollbar-thumb: #D0D0D0;
   --scrollbar-track: transparent;
   --icon-color: #555555;
-  --icon-accent: #D97706;
+  --icon-accent: #F28C24;
+  --primary-button-text: #FFFFFF;
+  --primary-button-hover: #FF9D2E;
+  --overlay: rgba(15, 23, 42, 0.5);
+}
+
+/* ───────────────────────── Dark Theme (Murshid default) ───────────────────────── */
+.dark {
+  color-scheme: dark;
+  --office-blue: #F28C24;
+  --office-hover: #FF9D2E;
+  --office-bg: #0B0E15;
+  --sidebar-bg: #0D121A;
+  --bg-main: #0D1118;
+  --text-main: #F5F7FA;
+  --text-sec: #C7CDD5;
+  --text-secondary: #C7CDD5;
+  --border-color: #232A34;
+  --bg-card: #111720;
+  --bg-card-elevated: #161D26;
+  --bg-hover: #1A222D;
+  --bg-active: #151D27;
+  --divider-color: #2A313B;
+  --text-muted: #8D96A3;
+  --danger: #EF4444;
+  --danger-bg: #2A1417;
+  --success: #22C55E;
+  --warning: #EAB308;
+  --primary: #F28C24;
+  --primary-hover: #FF9D2E;
+  --primary-active: #D97706;
+  --primary-bg: #2A1D10;
+  --primary-border: #70400F;
+  --shadow-card: 0 8px 30px rgba(0,0,0,0.20);
+  --shadow-popup: 0 8px 30px rgba(0,0,0,0.22);
+  --shadow-modal: 0 12px 40px rgba(0,0,0,0.28);
+  --input-bg: #111720;
+  --input-border: #2A313B;
+  --input-text: #F5F7FA;
+  --focus-border: #F28C24;
+  --table-header: #161D26;
+  --table-row: #111720;
+  --table-row-alt: #161D26;
+  --window-bg: #0B0E15;
+  --hover-bg: #1A222D;
+  --scrollbar-thumb: #2A313B;
+  --scrollbar-track: #0B0E15;
+  --icon-color: #8D96A3;
+  --icon-accent: #F28C24;
+  --primary-button-text: #FFFFFF;
+  --primary-button-hover: #FF9D2E;
+  --overlay: rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -116,24 +200,39 @@ body {
   overflow: hidden;
 }
 
+/* ── Semantic channel / status identity (work in both themes) ── */
+.channel-emerald { background-color: rgba(34, 197, 94, 0.10); color: #22C55E; border-color: rgba(34, 197, 94, 0.25); }
+.channel-amber   { background-color: rgba(242, 140, 36, 0.10); color: #F28C24; border-color: rgba(242, 140, 36, 0.25); }
+.channel-blue    { background-color: rgba(59, 130, 246, 0.10); color: #3B82F6; border-color: rgba(59, 130, 246, 0.25); }
+.channel-rose    { background-color: rgba(239, 68, 68, 0.10); color: #EF4444; border-color: rgba(239, 68, 68, 0.25); }
+.channel-cyan    { background-color: rgba(6, 182, 212, 0.10); color: #06B6D4; border-color: rgba(6, 182, 212, 0.25); }
+.channel-purple  { background-color: rgba(168, 85, 247, 0.10); color: #A855F7; border-color: rgba(168, 85, 247, 0.25); }
+
+/* ── Neutral surface overrides ── */
 .bg-white { background-color: var(--bg-card) !important; }
 .bg-\[\#fef3c7\] { background-color: var(--bg-card) !important; }
 .bg-\[\#e0f2fe\] { background-color: var(--bg-card) !important; }
 .bg-\[\#FAFAFA\] { background-color: var(--office-bg) !important; }
-.bg-\[\#FFF7ED\] { background-color: var(--bg-card) !important; }
+.bg-\[\#F8F6F0\] { background-color: var(--bg-card) !important; }
+.bg-\[\#1A1A1A\] { background-color: var(--table-row-alt) !important; }
+/* Accent tint surfaces follow the theme accent background token. */
+.bg-\[\#FFF7ED\] { background-color: var(--primary-bg) !important; }
 .bg-slate-50, .bg-gray-50, .bg-[#F8F9FA], .bg-[#f8fafc] { background-color: var(--office-bg) !important; }
 .bg-slate-100, .bg-gray-100 { background-color: var(--bg-hover) !important; }
 .bg-slate-200, .bg-gray-200 { background-color: var(--divider-color) !important; }
 .bg-blue-50, .bg-blue-50\/70, .bg-blue-50\/20, .bg-blue-50\/10 { background-color: var(--bg-hover) !important; }
 .bg-blue-500, .bg-blue-600, .bg-office-blue { background-color: var(--office-blue) !important; }
 .bg-blue-950\/40 { background-color: var(--shadow-card) !important; }
+
+/* Status tinted backgrounds (translucent in both themes) */
 .bg-emerald-50 { background-color: rgba(34, 197, 94, 0.08) !important; border-color: rgba(34, 197, 94, 0.2) !important; }
 .bg-rose-50 { background-color: rgba(239, 68, 68, 0.08) !important; border-color: rgba(239, 68, 68, 0.2) !important; }
-.bg-amber-50 { background-color: rgba(217, 119, 6, 0.08) !important; border-color: rgba(217, 119, 6, 0.2) !important; }
+.bg-amber-50 { background-color: rgba(242, 140, 36, 0.08) !important; border-color: rgba(242, 140, 36, 0.2) !important; }
+
 .hover\:bg-office-hover:hover { background-color: var(--office-hover) !important; }
 .hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-gray-50:hover { background-color: var(--bg-hover) !important; }
 .hover\:bg-white:hover { background-color: var(--bg-card) !important; }
-.hover\:bg-\[\#FFF7ED\]:hover { background-color: var(--bg-card) !important; }
+.hover\:bg-\[\#FFF7ED\]:hover { background-color: var(--primary-bg) !important; }
 .hover\:bg-\[\#FAFAFA\]:hover { background-color: var(--office-bg) !important; }
 .hover\:text-slate-800:hover { color: var(--text-main) !important; }
 .hover\:text-slate-900:hover { color: var(--text-main) !important; }
@@ -165,19 +264,19 @@ body {
 .border-slate-200, .border-gray-200, .border-slate-300 { border-color: var(--border-color) !important; }
 .border-slate-100, .border-gray-100 { border-color: var(--divider-color) !important; }
 .border-office-blue, .border-blue-500, .border-blue-600 { border-color: var(--office-blue) !important; }
-.border-blue-200, .border-blue-100 { border-color: rgba(217, 119, 6, 0.2) !important; }
+.border-blue-200, .border-blue-100 { border-color: var(--primary-border) !important; }
 .border-office-blue\/20 { border-color: var(--border-color) !important; }
-.border-blue-900\/40 { border-color: rgba(217, 119, 6, 0.3) !important; }
+.border-blue-900\/40 { border-color: rgba(242, 140, 36, 0.3) !important; }
 
-.shadow-xs { box-shadow: 0 6px 20px rgba(0,0,0,0.05) !important; }
+.shadow-xs { box-shadow: var(--shadow-card) !important; }
 .shadow-sm { box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; }
 .shadow-md { box-shadow: var(--shadow-popup) !important; }
 .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: var(--shadow-modal) !important; }
 
-.rounded-xl { border-radius: 16px !important; }
+.rounded-xl { border-radius: 14px !important; }
 .rounded-lg { border-radius: 12px !important; }
 .rounded-md { border-radius: 10px !important; }
-.rounded-2xl { border-radius: 16px !important; }
+.rounded-2xl { border-radius: 18px !important; }
 
 .btn-primary {
   background-color: var(--office-blue) !important;
@@ -195,19 +294,19 @@ body {
 .btn-primary:hover { background-color: var(--primary-button-hover) !important; }
 
 .btn-secondary {
-  background-color: #FFFFFF !important;
-  color: var(--office-blue) !important;
+  background-color: var(--bg-card-elevated) !important;
+  color: var(--text-secondary) !important;
   border-radius: 12px !important;
   padding: 10px 24px !important;
   font-weight: 700 !important;
   font-size: 13px !important;
-  border: 1.5px solid var(--office-blue) !important;
+  border: 1.5px solid var(--border-color) !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   font-family: "Cairo", sans-serif !important;
   line-height: 1.4 !important;
 }
-.btn-secondary:hover { background-color: #FFF7ED !important; }
+.btn-secondary:hover { background-color: var(--bg-hover) !important; }
 
 .btn-danger {
   background-color: var(--danger) !important;
@@ -225,8 +324,8 @@ body {
 .card {
   background-color: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.05) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
   padding: 24px !important;
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
 }
@@ -246,9 +345,9 @@ body {
 .form-input:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
   border-color: var(--focus-border) !important;
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.08) !important;
+  box-shadow: 0 0 0 3px rgba(242, 140, 36, 0.15) !important;
 }
-.form-input::placeholder, input::placeholder, textarea::placeholder { color: var(--icon-color) !important; font-family: "Cairo", sans-serif !important; }
+.form-input::placeholder, input::placeholder, textarea::placeholder { color: var(--text-muted) !important; font-family: "Cairo", sans-serif !important; }
 
 .form-label {
   font-weight: 700 !important;
@@ -257,6 +356,43 @@ body {
   margin-bottom: 6px !important;
   display: block !important;
 }
+
+/* ── Dark-only refinements for default Tailwind palette classes ── */
+.dark .bg-indigo-50 { background-color: rgba(59, 130, 246, 0.10) !important; border-color: rgba(59, 130, 246, 0.22) !important; }
+.dark .bg-violet-50 { background-color: rgba(168, 85, 247, 0.10) !important; border-color: rgba(168, 85, 247, 0.22) !important; }
+.dark .bg-cyan-50 { background-color: rgba(6, 182, 212, 0.10) !important; border-color: rgba(6, 182, 212, 0.22) !important; }
+.dark .bg-teal-50 { background-color: rgba(20, 184, 166, 0.10) !important; border-color: rgba(20, 184, 166, 0.22) !important; }
+.dark .bg-pink-50 { background-color: rgba(236, 72, 153, 0.10) !important; border-color: rgba(236, 72, 153, 0.22) !important; }
+.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.10) !important; border-color: rgba(168, 85, 247, 0.22) !important; }
+
+.dark .hover\:bg-rose-100:hover { background-color: rgba(239, 68, 68, 0.12) !important; }
+.dark .hover\:bg-indigo-100:hover { background-color: rgba(59, 130, 246, 0.12) !important; }
+.dark .hover\:bg-pink-100:hover { background-color: rgba(236, 72, 153, 0.12) !important; }
+.dark .hover\:bg-teal-100:hover { background-color: rgba(20, 184, 166, 0.12) !important; }
+.dark .hover\:bg-violet-100:hover { background-color: rgba(168, 85, 247, 0.12) !important; }
+.dark .hover\:bg-cyan-100:hover { background-color: rgba(6, 182, 212, 0.12) !important; }
+.dark .hover\:bg-amber-100:hover { background-color: rgba(242, 140, 36, 0.12) !important; }
+
+.dark .border-rose-200 { border-color: rgba(239, 68, 68, 0.25) !important; }
+.dark .border-emerald-200 { border-color: rgba(34, 197, 94, 0.25) !important; }
+.dark .border-amber-200 { border-color: rgba(242, 140, 36, 0.25) !important; }
+.dark .border-rose-100 { border-color: rgba(239, 68, 68, 0.3) !important; }
+.dark .border-emerald-100 { border-color: rgba(34, 197, 94, 0.3) !important; }
+.dark .border-amber-100 { border-color: rgba(242, 140, 36, 0.3) !important; }
+.dark .border-indigo-100 { border-color: rgba(59, 130, 246, 0.3) !important; }
+.dark .border-violet-100 { border-color: rgba(168, 85, 247, 0.3) !important; }
+.dark .border-cyan-100 { border-color: rgba(6, 182, 212, 0.3) !important; }
+.dark .border-teal-100 { border-color: rgba(20, 184, 166, 0.3) !important; }
+.dark .border-pink-100 { border-color: rgba(236, 72, 153, 0.3) !important; }
+.dark .border-purple-100 { border-color: rgba(168, 85, 247, 0.3) !important; }
+
+.dark .text-indigo-700, .dark .text-indigo-600, .dark .text-indigo-500 { color: #818CF8 !important; }
+.dark .text-violet-700, .dark .text-violet-600, .dark .text-violet-500 { color: #A78BFA !important; }
+.dark .text-cyan-700 { color: #22D3EE !important; }
+.dark .text-teal-700 { color: #2DD4BF !important; }
+.dark .text-pink-700, .dark .text-pink-600, .dark .text-pink-500 { color: #F472B6 !important; }
+.dark .text-purple-700, .dark .text-purple-500 { color: #A855F7 !important; }
+.dark .text-amber-700 { color: #FBBF24 !important; }
 
 @media print {
   body {

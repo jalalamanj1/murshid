@@ -47,7 +47,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-50 bg-white"
+      className="fixed inset-0 flex items-center justify-center z-50 bg-office-bg"
     >
       <div
         dir="rtl"
@@ -66,10 +66,10 @@ export default function SplashView({ onComplete }: SplashViewProps) {
         </div>
 
         {/* Title */}
-        <h1 className="text-[40px] font-bold text-slate-900 mb-3">
+        <h1 className="text-[40px] font-bold text-main mb-3">
           مرشد
         </h1>
-        <p className="text-sm text-slate-500 mb-12 text-center leading-relaxed max-w-[360px]">
+        <p className="text-sm text-muted mb-12 text-center leading-relaxed max-w-[360px]">
           برنامج مكتبي ذكي مصمم لمساعدة المرشد التربوي في إدارة الطلبة، السجلات الإرشادية والوثائق المدرسية الرسمية.
         </p>
 
@@ -80,18 +80,18 @@ export default function SplashView({ onComplete }: SplashViewProps) {
           </div>
           <div className="w-full h-1 bg-border-color overflow-hidden rounded-sm">
             <div
-              className="h-full bg-white"
+              className="h-full bg-primary"
               style={{
                 width: `${progress}%`,
                 transition: 'width 30ms linear',
               }}
             />
           </div>
-          <p className="text-xs text-slate-400 mt-4 text-center">{statusText}</p>
+          <p className="text-xs text-muted mt-4 text-center">{statusText}</p>
         </div>
 
         {/* Footer */}
-        <div className="mt-16 text-[10px] text-slate-400 text-center">
+        <div className="mt-16 text-[10px] text-muted text-center">
           جميع الحقوق محفوظة &mdash; النسخة: v1.0.8
         </div>
       </div>

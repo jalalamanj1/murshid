@@ -71,6 +71,7 @@ import OfficialLettersView from './components/OfficialLettersView';
 import ExportSection from './components/ExportSection';
 import UpdateSettingsView from './components/UpdateSettingsView';
 import { loadCache, validateAsync, deleteCache as deleteActivationCache } from './lib/pandaraActivation';
+import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
 
 import { 
   Users, 
@@ -88,6 +89,7 @@ import {
 export default function App() {
   const [flowStage, setFlowStage] = useState<AppFlowStage>('SPLASH');
   const [activeModule, setActiveModule] = useState<ActiveModule>('DASHBOARD');
+  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
   const [license, setLicense] = useState<LicenseInfo>({ isActivated: false });
   const [profile, setProfile] = useState<CounselorProfile>({
@@ -952,6 +954,35 @@ export default function App() {
                 <p className="text-[10px] text-muted">جميع سجلات التصدير تُحفظ في هذا المسار افتراضياً.</p>
               </div>
 
+              <div className="space-y-3 max-w-lg">
+                <h4 className="text-xs font-bold text-main">مظهر البرنامج</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => { setThemeState('dark'); persistTheme('dark'); }}
+                    className={`flex items-center justify-center gap-2 rounded-xl border p-3.5 text-xs font-bold transition-all cursor-pointer ${
+                      theme === 'dark'
+                        ? 'bg-primary-bg border-primary text-primary'
+                        : 'bg-card border-border-color text-secondary hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-md bg-[#0D121A] border border-[#232A34] block" />
+                    داكن
+                  </button>
+                  <button
+                    onClick={() => { setThemeState('light'); persistTheme('light'); }}
+                    className={`flex items-center justify-center gap-2 rounded-xl border p-3.5 text-xs font-bold transition-all cursor-pointer ${
+                      theme === 'light'
+                        ? 'bg-primary-bg border-primary text-primary'
+                        : 'bg-card border-border-color text-secondary hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-md bg-[#FAFAFA] border border-[#E8E8E8] block" />
+                    فاتح
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted">يُحفظ اختيار المظهر تلقائياً ويُطبَّق عند كل تشغيل.</p>
+              </div>
+
               <UpdateSettingsView />
 
               <div className="space-y-3 max-w-lg">
@@ -990,7 +1021,7 @@ export default function App() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">المطور:</span>
                       <a
-                        href="https://instagram.com/jalalamanj1"
+                        href="https://jalalamanj.online"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-primary hover:text-primary-hover transition-colors underline decoration-dotted underline-offset-2"

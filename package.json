@@ -51,7 +51,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "pandara-tech",
+      "owner": "jalalamanj1",
       "repo": "Murshid-Releases",
       "releaseType": "release"
     },

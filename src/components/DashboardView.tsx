@@ -405,21 +405,21 @@ export default function DashboardView({
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-6">
         <div className="card flex items-center gap-5 hover:border-primary transition-colors">
-          <div className="p-3.5 bg-[#FFF7ED] text-primary rounded-xl">
-            <Users className="w-6 h-6" />
+          <div className="p-4 bg-primary-bg text-primary rounded-xl">
+            <Users className="w-7 h-7" />
           </div>
           <div>
             <p className="text-xs text-muted font-bold">إجمالي الطلاب</p>
-            <h3 className="text-3xl font-bold text-main mt-1">{totalStudents}</h3>
+            <h3 className="text-4xl font-extrabold text-main mt-1">{totalStudents}</h3>
           </div>
         </div>
         <div className="card flex items-center gap-5 hover:border-primary transition-colors">
-          <div className="p-3.5 bg-[#FFF7ED] text-primary rounded-xl">
-            <Calendar className="w-6 h-6" />
+          <div className="p-4 bg-primary-bg text-primary rounded-xl">
+            <Calendar className="w-7 h-7" />
           </div>
           <div>
             <p className="text-xs text-muted font-bold">العام الدراسي</p>
-            <h3 className="text-3xl font-bold text-main mt-1">{academicYear(profile.academicYear)}</h3>
+            <h3 className="text-4xl font-extrabold text-main mt-1">{academicYear(profile.academicYear)}</h3>
           </div>
         </div>
       </div>
@@ -442,17 +442,17 @@ export default function DashboardView({
                     onOpenRecordsForType(item.type);
                   }
                 }}
-                className="flex flex-col items-start p-3 bg-card hover:bg-[#FFF7ED] border border-border-color hover:border-primary rounded-xl transition-all duration-200 text-right group cursor-pointer min-h-[92px] justify-between"
+                className="flex flex-col items-start p-4 bg-card-elevated hover:bg-hover border border-border-color hover:border-primary-border rounded-2xl transition-all duration-200 text-right group cursor-pointer min-h-[92px] justify-between"
               >
                 <div className="flex items-center gap-2 w-full">
-                  <div className="p-1.5 rounded-lg bg-[#FFF7ED] text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <div className="p-1.5 rounded-lg bg-primary-bg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                     <item.icon className="w-4 h-4 shrink-0" />
                   </div>
                   <span className="text-xs font-bold text-main group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                     {item.name}
                   </span>
                 </div>
-                <span className="text-[9px] font-bold text-white bg-primary group-hover:bg-primary-hover mt-2.5 flex items-center gap-1 self-end px-2.5 py-1 rounded-lg shadow-xs">
+                <span className="text-[10px] font-bold text-white bg-primary group-hover:bg-primary-hover mt-2.5 flex items-center gap-1 self-end px-3 py-1.5 rounded-full shadow-xs">
                   تدوين جديد +
                 </span>
               </button>
@@ -464,7 +464,7 @@ export default function DashboardView({
         <div className="card space-y-5">
           <div className="flex items-center justify-between border-b border-divider-color pb-4">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-[#FFF7ED] text-primary rounded-lg">
+              <div className="p-1.5 bg-primary-bg text-primary rounded-lg">
                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.98 1.25-5.59 3.69-.53.36-1 .54-1.42.53-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.24.37-.49 1.02-.74 4-1.74 6.67-2.88 8-3.43 3.81-1.57 4.6-1.84 5.12-1.85.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.2-.04.28z"/></svg>
               </div>
               <h3 className="text-xs font-bold text-main">قنوات تيليغرام مفيدة للمرشد التربوي</h3>
@@ -473,15 +473,15 @@ export default function DashboardView({
           </div>
           <div className="space-y-3">
             {[
-              {title:'موسوعة الإدارة المدرسية',username:'@almadrase',url:'https://t.me/almadrase',color:'bg-emerald-50 text-emerald-700 border-emerald-100',letter:'م'},
-              {title:'بصمة مرشد',username:'@b8a8b',url:'https://t.me/b8a8b',color:'bg-amber-50 text-amber-700 border-amber-100',letter:'ب'},
-              {title:'مكتبة علم النفس',username:'@psychology95',url:'https://t.me/psychology95',color:'bg-indigo-50 text-indigo-700 border-indigo-100',letter:'ك'},
-              {title:'حقيبة المقاييس النفسية',username:'@Psychological_measurement_bag',url:'https://t.me/Psychological_measurement_bag',color:'bg-rose-50 text-rose-700 border-rose-100',letter:'ح'},
-              {title:'كتب علم النفس',username:'@eilmanafss',url:'https://t.me/eilmanafss',color:'bg-cyan-50 text-cyan-700 border-cyan-100',letter:'ت'},
-              {title:'كروب الارشاد التربوي العام',username:'@alarshad_altarbawii',url:'https://t.me/alarshad_altarbawii',color:'bg-purple-50 text-purple-700 border-purple-100',letter:'ك'},
+              {title:'موسوعة الإدارة المدرسية',username:'@almadrase',url:'https://t.me/almadrase',color:'channel-emerald',letter:'م'},
+              {title:'بصمة مرشد',username:'@b8a8b',url:'https://t.me/b8a8b',color:'channel-amber',letter:'ب'},
+              {title:'مكتبة علم النفس',username:'@psychology95',url:'https://t.me/psychology95',color:'channel-blue',letter:'ك'},
+              {title:'حقيبة المقاييس النفسية',username:'@Psychological_measurement_bag',url:'https://t.me/Psychological_measurement_bag',color:'channel-rose',letter:'ح'},
+              {title:'كتب علم النفس',username:'@eilmanafss',url:'https://t.me/eilmanafss',color:'channel-cyan',letter:'ت'},
+              {title:'كروب الارشاد التربوي العام',username:'@alarshad_altarbawii',url:'https://t.me/alarshad_altarbawii',color:'channel-purple',letter:'ك'},
             ].map((chan, idx) => (
               <a key={idx} href={chan.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl border border-border-color hover:border-primary hover:bg-[#FFF7ED] transition-all duration-200">
+                className="flex items-center justify-between p-3 rounded-xl border border-border-color hover:border-primary-border hover:bg-hover transition-all duration-200">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border ${chan.color}`}>{chan.letter}</div>
                   <div className="min-w-0">
@@ -489,7 +489,7 @@ export default function DashboardView({
                     <p className="text-[9px] text-muted">{chan.username}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${chan.color}`}>متابعة</span>
+                <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold ${chan.color}`}>متابعة</span>
               </a>
             ))}
           </div>

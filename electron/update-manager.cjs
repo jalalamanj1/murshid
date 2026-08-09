@@ -1,13 +1,6 @@
 const { autoUpdater } = require('electron-updater');
 const { BrowserWindow } = require('electron');
 
-autoUpdater.setFeedURL({
-  provider: 'github',
-  owner: 'pandara-tech',
-  repo: 'Murshid-Releases',
-  releaseType: 'release',
-});
-
 let _mainWindow = null;
 let _checkDone = false;
 let _updateAvailable = false;

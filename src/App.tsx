@@ -1016,7 +1016,7 @@ export default function App() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">الإصدار الحالي:</span>
-                      <span className="text-xs font-mono text-muted">v1.1.1</span>
+                      <span className="text-xs font-mono text-muted">v1.1.2</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">المطور:</span>

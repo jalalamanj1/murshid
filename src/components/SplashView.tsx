@@ -92,7 +92,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
 
         {/* Footer */}
         <div className="mt-16 text-[10px] text-muted text-center">
-          جميع الحقوق محفوظة &mdash; النسخة: v1.0.9
+          جميع الحقوق محفوظة &mdash; النسخة: v1.1.0
         </div>
       </div>
     </div>

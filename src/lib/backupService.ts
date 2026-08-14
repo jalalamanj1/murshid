@@ -202,8 +202,27 @@ export async function estimateBackupSize(settings: BackupSettings): Promise<stri
 
 // ── Local Backup ─────────────────────────────────────────────────────
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result ? result.split(',')[1] || '' : '');
+    };
+    reader.onerror = () => reject(new Error('فشل قراءة ملف النسخة الاحتياطية.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Create a local backup and save it directly into `folderPath`.
+ * The ZIP is built and encrypted in the renderer, then handed to the
+ * main process (backup:write-local) which creates the folder if needed
+ * and writes the file. Falls back to a browser download outside Electron.
+ */
 export async function createLocalBackup(
   settings: BackupSettings,
+  folderPath: string,
   onProgress?: (msg: string) => void
 ): Promise<BackupHistoryEntry> {
   const entry: BackupHistoryEntry = {
@@ -217,45 +236,32 @@ export async function createLocalBackup(
 
   try {
     onProgress?.('جاري تجميع البيانات...');
-    const { zip, folderName } = await buildBackupZip(settings);
-    const fileName = `${folderName}.zip`;
+    const { blob, fileName } = await createBackupBlob(settings);
     entry.fileName = fileName;
+    entry.size = formatFileSize(blob.size);
 
-    onProgress?.('جاري ضغط الملفات...');
-    let zipBlob: Blob;
-    if (settings.compressBackups) {
-      zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+    const electron = (window as any).electronAPI;
+    if (electron?.saveLocalBackup && folderPath?.trim()) {
+      onProgress?.('جاري الحفظ في المجلد...');
+      const base64 = await blobToBase64(blob);
+      const res = await electron.saveLocalBackup(folderPath.trim(), fileName, base64);
+      if (!res?.ok) throw new Error(res?.error || 'فشل حفظ النسخة الاحتياطية في المجلد.');
+      entry.status = 'SUCCESS';
+      onProgress?.('تم بنجاح! تم حفظ النسخة الاحتياطية.');
     } else {
-      zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+      // Fallback (browser / dev): trigger a download instead
+      onProgress?.('جاري بدء التنزيل...');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = entry.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      entry.status = 'SUCCESS';
+      onProgress?.('تم بنجاح! تم تنزيل النسخة الاحتياطية.');
     }
-
-    entry.size = formatFileSize(zipBlob.size);
-
-    onProgress?.('جاري تشفير البيانات...');
-    let finalBlob = zipBlob;
-
-    if (settings.encryptionEnabled && settings.backupPassword) {
-      onProgress?.('جاري تطبيق تشفير AES-256...');
-      const arrayBuf = await zipBlob.arrayBuffer();
-      const encrypted = await encryptData(arrayBuf, settings.backupPassword);
-      finalBlob = new Blob([encrypted], { type: 'application/octet-stream' });
-      entry.fileName = `${folderName}_encrypted.zip`;
-      entry.size = formatFileSize(finalBlob.size);
-    }
-
-    // Trigger browser download
-    onProgress?.('جاري بدء التنزيل...');
-    const url = URL.createObjectURL(finalBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = entry.fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    entry.status = 'SUCCESS';
-    onProgress?.('تم بنجاح! تم تنزيل النسخة الاحتياطية.');
 
     // Update settings
     settings.lastLocalBackup = new Date().toISOString();

@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportSpecialDocx: (category, record) => ipcRenderer.invoke('export:special-docx', category, record),
   saveFile: (fileName, base64) => ipcRenderer.invoke('export:save-file', fileName, base64),
 
+  // ── Local Backup ────────────────────────────────────────────────
+  getDefaultBackupFolder: () => ipcRenderer.invoke('backup:get-default-folder'),
+  saveLocalBackup: (folderPath, fileName, base64) => ipcRenderer.invoke('backup:write-local', folderPath, fileName, base64),
+
   // ── Google Drive OAuth ───────────────────────────────────────────
   driveAuth: () => ipcRenderer.invoke('drive:auth'),
 

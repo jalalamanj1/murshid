@@ -87,6 +87,7 @@ interface Toast {
 export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewProps) {
   // ── State ──────────────────────────────────────────────────────
   const [settings, setSettings] = useState<BackupSettings>(loadBackupSettings());
+  const [defaultFolder, setDefaultFolder] = useState('');
   const [gDrive, setGDrive] = useState<GoogleDriveAccount>(getGoogleDriveAccount());
   const [cloudBackups, setCloudBackups] = useState<CloudBackupFile[]>([]);
   const [storageInfo, setStorageInfo] = useState<{ used: string; total: string } | null>(null);
@@ -139,6 +140,21 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
     estimateBackupSize(settings).then(setEstimatedSize).catch(() => setEstimatedSize('غير معروف'));
   }, [settings]);
 
+  // ── Default backup folder (Desktop\Murshid Backups) ──────────
+  useEffect(() => {
+    const e = (window as any).electronAPI;
+    if (e?.getDefaultBackupFolder) {
+      e.getDefaultBackupFolder()
+        .then((res: any) => {
+          if (res?.ok && res.folder) setDefaultFolder(res.folder);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Effective folder: user choice, or the default when none chosen
+  const effectiveFolder = settings.localFolder?.trim() || defaultFolder;
+
   // ── Load cloud info ───────────────────────────────────────────
   useEffect(() => {
     if (gDrive.connected && gDrive.tokens) {
@@ -158,7 +174,12 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
     setIsLocalWorking(true);
     setLocalProgress('');
     try {
-      await createLocalBackup(settings, setLocalProgress);
+      const folder = settings.localFolder?.trim() || defaultFolder;
+      if (!folder) {
+        addToast('error', 'تعذر تحديد مجلد النسخ الاحتياطي.');
+        return;
+      }
+      await createLocalBackup(settings, folder, setLocalProgress);
       setSettings(loadBackupSettings()); // reload to get updated history
       addToast('success', 'تم النسخ الاحتياطي المحلي بنجاح!');
     } catch (err: any) {
@@ -166,6 +187,34 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
     } finally {
       setIsLocalWorking(false);
     }
+  };
+
+  // ── Local folder picker (native directory dialog) ──────────────
+  const handlePickLocalFolder = async () => {
+    try {
+      const e = (window as any).electronAPI;
+      if (e?.pickFolder) {
+        const result = await e.pickFolder();
+        if (result?.canceled) return;
+        if (result?.filePaths?.[0]) {
+          updateSettings({ localFolder: result.filePaths[0] });
+          addToast('success', 'تم تحديث مجلد النسخ الاحتياطي.');
+        }
+      } else {
+        const folder = prompt('أدخل مسار مجلد النسخ الاحتياطي:', settings.localFolder);
+        if (folder && folder.trim()) {
+          updateSettings({ localFolder: folder.trim() });
+          addToast('success', 'تم تحديث مجلد النسخ الاحتياطي.');
+        }
+      }
+    } catch {
+      addToast('error', 'تعذر اختيار مجلد النسخ الاحتياطي.');
+    }
+  };
+
+  const handleResetLocalFolder = () => {
+    updateSettings({ localFolder: '' });
+    addToast('success', 'تم استعادة المجلد الافتراضي.');
   };
 
   // ── Local restore ─────────────────────────────────────────────
@@ -340,7 +389,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">مجلد النسخ الاحتياطي</span>
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono break-all">{settings.localFolder}</span>
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono break-all">{effectiveFolder || 'سطح المكتب\\Murshid Backups'}</span>
           </div>
           <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">آخر نسخة احتياطية</span>
@@ -356,21 +405,27 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
         <div className="flex items-center gap-2">
           <div className="flex-1 bg-[#F8F6F0] rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
             <FolderOpen className="w-3.5 h-3.5 text-slate-400 inline ml-2" />
-            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{settings.localFolder}</span>
+            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{effectiveFolder || 'سطح المكتب\\Murshid Backups'}</span>
+            {!settings.localFolder && (
+              <span className="mr-2 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">الافتراضي</span>
+            )}
           </div>
           <button
-            onClick={() => {
-              const folder = prompt('أدخل مسار مجلد النسخ الاحتياطي:', settings.localFolder);
-              if (folder && folder.trim()) {
-                updateSettings({ localFolder: folder.trim() });
-                addToast('success', 'تم تحديث مجلد النسخ الاحتياطي.');
-              }
-            }}
+            onClick={handlePickLocalFolder}
             className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <FolderOpen className="w-3.5 h-3.5" />
             <span>اختيار مجلد</span>
           </button>
+          {settings.localFolder && (
+            <button
+              onClick={handleResetLocalFolder}
+              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>الافتراضي</span>
+            </button>
+          )}
         </div>
 
         {/* Action buttons */}

@@ -241,9 +241,39 @@ ipcMain.handle('dialog:open', async (_event, filters) => {
 // IPC: Pick folder dialog
 ipcMain.handle('dialog:pick-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
+    properties: ['openDirectory', 'createDirectory'],
   });
   return result;
+});
+
+// ── Local Backup IPC ─────────────────────────────────────────────────
+// The default local backup folder is "Murshid Backups" on the Desktop.
+// The renderer builds the encrypted ZIP (JSZip + Web Crypto) and sends
+// it here as base64; the main process owns all filesystem writes.
+ipcMain.handle('backup:get-default-folder', async () => {
+  try {
+    return { ok: true, folder: path.join(app.getPath('desktop'), 'Murshid Backups') };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('backup:write-local', async (_event, folderPath, fileName, base64) => {
+  try {
+    if (!folderPath || typeof folderPath !== 'string' || !folderPath.trim()) {
+      return { ok: false, error: 'مسار مجلد النسخ الاحتياطي غير صالح.' };
+    }
+    if (!fileName || typeof fileName !== 'string' || !base64 || typeof base64 !== 'string') {
+      return { ok: false, error: 'بيانات النسخة الاحتياطية غير صالحة.' };
+    }
+    fs.mkdirSync(folderPath, { recursive: true });
+    const filePath = path.join(folderPath, fileName);
+    const buffer = Buffer.from(base64, 'base64');
+    fs.writeFileSync(filePath, buffer);
+    return { ok: true, filePath, size: buffer.length };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 });
 
 // IPC: Open external URL

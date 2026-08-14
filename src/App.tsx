@@ -53,6 +53,7 @@ import DashboardView from './components/DashboardView';
 import RecordsListView from './components/RecordsListView';
 import StudentManagementView from './components/StudentManagementView';
 import BackupSyncView from './components/BackupSyncView';
+import DriveFolderAccessView from './components/DriveFolderAccessView';
 import CaseStudyFormView from './components/CaseStudyFormView';
 import CaseStudyListView from './components/CaseStudyListView';
 import CounselingSessionFormView from './components/CounselingSessionFormView';
@@ -915,6 +916,26 @@ export default function App() {
           />
         );
 
+      case 'DRIVE_LETTERS':
+        return (
+          <DriveFolderAccessView
+            title="مخاطبات التربية"
+            subtitle="المخاطبات والتوجيهات الرسمية لمديرية التربية"
+            folderId="1U5Fows578m6t9WJNe0HNWYG2m0D6HiDO"
+            description="مجلد سحابي مشترك يحتوي المخاطبات الرسمية الصادرة عن المديرية العامة للتربية الخاصة بالمدارس والمرشدين التربويين."
+          />
+        );
+
+      case 'DRIVE_FILES':
+        return (
+          <DriveFolderAccessView
+            title="ملفات"
+            subtitle="الملفات المشتركة بين المرشدين التربويين"
+            folderId="1pNFVBUHEr0pRlo2w2b_r-JIGHdFJYo8I"
+            description="مجلد سحابي مشترك لمشاركة الملفات بين المرشدين التربويين (مرفقات، تقارير، نماذج وقوالب عمل)."
+          />
+        );
+
       case 'SETTINGS':
         return (
           <div className="card space-y-6">
@@ -1005,7 +1026,7 @@ export default function App() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">الإصدار الحالي:</span>
-                      <span className="text-xs font-mono text-muted">v1.1.6</span>
+                      <span className="text-xs font-mono text-muted">v1.1.7</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">المطور:</span>
@@ -1067,6 +1088,8 @@ export default function App() {
       RECORDS: 'السجلات الإرشادية',
       TEMPLATES: 'أغلفة سجلات الإرشاد',
       BACKUP: 'النسخ الاحتياطي',
+      DRIVE_LETTERS: 'مخاطبات التربية',
+      DRIVE_FILES: 'الملفات',
       SETTINGS: 'الإعدادات',
     };
     try {

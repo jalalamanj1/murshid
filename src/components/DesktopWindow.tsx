@@ -11,7 +11,6 @@ import {
   Calendar,
   AlertCircle,
   FileBox,
-  Monitor,
 } from 'lucide-react';
 import { ActiveModule, CounselorProfile } from '../types';
 
@@ -46,8 +45,6 @@ export default function DesktopWindow({
       case 'STUDENTS': return 'إدارة شؤون الطلاب الرقمية';
       case 'RECORDS': return 'السجلات الارشادية';
       case 'TEMPLATES': return 'أغلفة سجلات الإرشاد';
-      case 'PT_DRIVE': return 'Google Drive';
-      case 'OFFICIAL_LETTERS': return 'مخاطبات رسمية';
       case 'BACKUP': return 'النسخ الاحتياطي ومزامنة السحاب';
       case 'SETTINGS': return 'إعدادات النظام المكتبي';
       default: return 'مرشد';
@@ -78,8 +75,6 @@ export default function DesktopWindow({
                 { id: 'STUDENTS', name: 'إدارة الطلاب ومتابعتهم', icon: Users },
                 { id: 'RECORDS', name: 'السجلات الارشادية', icon: FileBox },
                 { id: 'TEMPLATES', name: 'أغلفة سجلات الإرشاد', icon: FileText },
-                { id: 'PT_DRIVE', name: 'Google Drive', icon: Monitor },
-                { id: 'OFFICIAL_LETTERS', name: 'مخاطبات رسمية', icon: FileText },
                 { id: 'BACKUP', name: 'النسخ الاحتياطي والمزامنة', icon: Database },
                 { id: 'SETTINGS', name: 'إعدادات النظام المكتبي', icon: Sliders }
               ].map((item) => {

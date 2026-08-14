@@ -65,9 +65,7 @@ import HealthRecordListView from './components/HealthRecordListView';
 import ParentLossRecordFormView from './components/ParentLossRecordFormView';
 import ParentLossRecordListView from './components/ParentLossRecordListView';
 import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
-import GoogleDriveFolderView from './components/GoogleDriveFolderView';
 import RecordCoversView from './components/RecordCoversView';
-import OfficialLettersView from './components/OfficialLettersView';
 import ExportSection from './components/ExportSection';
 import UpdateSettingsView from './components/UpdateSettingsView';
 import { loadCache, validateAsync, deleteCache as deleteActivationCache } from './lib/pandaraActivation';
@@ -149,12 +147,12 @@ export default function App() {
   };
 
   useEffect(() => {
-    const raw = localStorage.getItem('murshid_gdrive_token');
+    const raw = localStorage.getItem('murshid_google_drive');
     if (raw) {
       try {
-        const t = JSON.parse(raw);
-        setGdriveConnected(!!t.access_token);
-        setGdriveEmail(t.email || '');
+        const account = JSON.parse(raw);
+        setGdriveConnected(!!account?.tokens?.access_token);
+        setGdriveEmail(account?.email || account?.tokens?.email || '');
       } catch {}
     }
   }, []);
@@ -165,9 +163,7 @@ export default function App() {
       if (!electron?.driveAuth) return;
       const res = await electron.driveAuth();
       if (res.ok) {
-        // Save to unified token key (used by PT Drive, Official Letters)
-        localStorage.setItem('murshid_gdrive_token', JSON.stringify(res.tokens));
-        // Also save to backup service key so Backup is connected too
+        // Save to backup service key (Online Backup module)
         const backupAccount = { connected: true, email: res.tokens.email || '', tokens: res.tokens, folderId: undefined };
         localStorage.setItem('murshid_google_drive', JSON.stringify(backupAccount));
         setGdriveConnected(true);
@@ -181,7 +177,6 @@ export default function App() {
   };
 
   const handleGDriveDisconnect = () => {
-    localStorage.removeItem('murshid_gdrive_token');
     localStorage.removeItem('murshid_google_drive');
     setGdriveConnected(false);
     setGdriveEmail('');
@@ -913,12 +908,6 @@ export default function App() {
       case 'TEMPLATES':
         return <RecordCoversView />;
 
-      case 'PT_DRIVE':
-        return <GoogleDriveFolderView />;
-
-      case 'OFFICIAL_LETTERS':
-        return <OfficialLettersView />;
-
       case 'BACKUP':
         return (
           <BackupSyncView
@@ -1077,8 +1066,6 @@ export default function App() {
       STUDENTS: 'إدارة الطلاب',
       RECORDS: 'السجلات الإرشادية',
       TEMPLATES: 'أغلفة سجلات الإرشاد',
-      PT_DRIVE: 'Google Drive',
-      OFFICIAL_LETTERS: 'مخاطبات رسمية',
       BACKUP: 'النسخ الاحتياطي',
       SETTINGS: 'الإعدادات',
     };

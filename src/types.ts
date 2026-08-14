@@ -10,8 +10,6 @@ export type ActiveModule =
   | 'STUDENTS'
   | 'RECORDS'
   | 'TEMPLATES'
-  | 'PT_DRIVE'
-  | 'OFFICIAL_LETTERS'
   | 'BACKUP'
   | 'SETTINGS';
 

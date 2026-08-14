@@ -321,33 +321,31 @@ const { exportService } = require('./ExportService.cjs');
 
   // ── Google Drive OAuth ─────────────────────────────────────────────
   // Uses a local HTTP server to handle the OAuth redirect, since Google
-  // rejects file:// redirect URIs. The redirect URI matches the dev server
-  // URL that was registered in Google Cloud Console for this Web Application
-  // OAuth client (client_secret confirms Web App type).
+  // rejects file:// redirect URIs. The redirect URI must be registered in
+  // Google Cloud Console for this OAuth client (http://localhost:3000).
+  // Requested scopes are the MINIMUM set: user identity (openid + email +
+  // profile) and drive.file (create/manage Murshid's own backup files only).
+  // No broad Drive access, no Sheets, no other Google services.
   const CLIENT_ID = '580475588026-196m9aepjuhh325nkaffdchrlqnqb5ul.apps.googleusercontent.com';
   const CLIENT_SECRET = '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';
   const OAUTH_PORT = 3000;
   const OAUTH_REDIRECT = `http://localhost:${OAUTH_PORT}`;
-  const OAUTH_SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+  const OAUTH_SCOPES = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file';
 
   ipcMain.handle('drive:auth', async () => {
     let server;
     try {
-      // Start a temporary HTTP server to catch the OAuth redirect
+      // Start a temporary HTTP server to catch the OAuth redirect.
+      // The port is deterministic (3000) because the redirect URI must
+      // match exactly what is registered for this OAuth client in Google
+      // Cloud Console. A random fallback port would produce a
+      // redirect_uri_mismatch error for a Web Application client.
       server = await new Promise((resolve, reject) => {
         const s = http.createServer();
+        s.on('error', (err) => reject(err));
         s.listen(OAUTH_PORT, 'localhost', () => resolve(s));
-        s.on('error', (err) => {
-          // Port 3000 may be in use; try any available port as fallback
-          if (err.code === 'EADDRINUSE') {
-            s.listen(0, 'localhost', () => resolve(s));
-          } else {
-            reject(err);
-          }
-        });
       });
-      const actualPort = server.address().port;
-      const redirectUri = `http://localhost:${actualPort}`;
+      const redirectUri = OAUTH_REDIRECT;
 
       // Build the authorization URL
       const authParams = new URLSearchParams({

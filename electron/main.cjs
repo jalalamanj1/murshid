@@ -14,6 +14,12 @@ let mainWindow;
 // ── Update Manager ────────────────────────────────────────────────────
 const updateManager = require('./update-manager.cjs');
 
+// ── Application-wide Zoom ─────────────────────────────────────────────
+const zoom = require('./zoom.cjs');
+
+// ── Murshid Backend API Client ────────────────────────────────────────
+const { client: backendClient, setProfile: setBackendProfile } = require('./backend-client.cjs');
+
 // ── Integrity Check ───────────────────────────────────────────────────
 const { verifyIntegrity, isBanned, banDevice, getHwid } = require('./integrity.cjs');
 
@@ -80,6 +86,9 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
+
+  // Application-wide zoom (Ctrl+Plus/Minus/0 and Ctrl+wheel)
+  zoom.install(mainWindow);
 
   // Always launch in fullscreen (maximized) mode.
   mainWindow.maximize();
@@ -266,11 +275,123 @@ ipcMain.handle('backup:write-local', async (_event, folderPath, fileName, base64
     if (!fileName || typeof fileName !== 'string' || !base64 || typeof base64 !== 'string') {
       return { ok: false, error: 'بيانات النسخة الاحتياطية غير صالحة.' };
     }
+    const safeName = path.basename(fileName).replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_') || 'backup.zip';
     fs.mkdirSync(folderPath, { recursive: true });
-    const filePath = path.join(folderPath, fileName);
+    if (fs.existsSync(folderPath) && !fs.statSync(folderPath).isDirectory()) {
+      return { ok: false, error: 'المسار المحدد ليس مجلداً.' };
+    }
     const buffer = Buffer.from(base64, 'base64');
-    fs.writeFileSync(filePath, buffer);
+    if (buffer.length === 0) return { ok: false, error: 'الملف المحفوظ فارغ.' };
+
+    // No accidental overwrite: if the target exists, pick a unique name.
+    let filePath = path.join(folderPath, safeName);
+    let counter = 1;
+    while (fs.existsSync(filePath)) {
+      const ext = path.extname(safeName);
+      const stem = safeName.slice(0, -ext.length || safeName.length);
+      filePath = path.join(folderPath, `${stem} (${counter})${ext}`);
+      counter += 1;
+    }
+
+    // Atomic write: temp file in the same directory, then rename.
+    const tmpPath = filePath + '.tmp';
+    fs.writeFileSync(tmpPath, buffer);
+    fs.renameSync(tmpPath, filePath);
     return { ok: true, filePath, size: buffer.length };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+// ── Murshid Drive Folder IPC ─────────────────────────────────────────
+// Uses the backend (owner-side Google Drive). Owner credentials never
+// enter this process — all Drive access goes through the Murshid API.
+ipcMain.handle('drive-folder:status', async (_event, profile) => {
+  try {
+    setBackendProfile(profile);
+    const user = await backendClient.status();
+    return { ok: true, user };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('drive-folder:list', async (_event, folderKey) => {
+  try {
+    const res = await backendClient.listFolder(folderKey);
+    return { ok: true, files: res.files || [], nextPageToken: res.nextPageToken || null };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('drive-folder:preview', async (_event, fileId) => {
+  try {
+    const { buffer, mimeType, name } = await backendClient.getContent(fileId, { disposition: 'inline', preview: true });
+    return { ok: true, base64: buffer.toString('base64'), mimeType, name };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('drive-folder:download', async (_event, fileId, folderPath) => {
+  try {
+    const { buffer, name } = await backendClient.getContent(fileId, { disposition: 'attachment' });
+    const safeName = path.basename(name || 'file').replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_') || 'file';
+    const dir = (folderPath && typeof folderPath === 'string' && folderPath.trim())
+      ? folderPath.trim()
+      : app.getPath('downloads');
+    fs.mkdirSync(dir, { recursive: true });
+    let filePath = path.join(dir, safeName);
+    let counter = 1;
+    while (fs.existsSync(filePath)) {
+      const ext = path.extname(safeName);
+      const stem = safeName.slice(0, -ext.length || safeName.length);
+      filePath = path.join(dir, `${stem} (${counter})${ext}`);
+      counter += 1;
+    }
+    const tmpPath = filePath + '.tmp';
+    fs.writeFileSync(tmpPath, buffer);
+    fs.renameSync(tmpPath, filePath);
+    return { ok: true, filePath, size: buffer.length };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('drive-folder:upload', async (_event, folderKey, uploadInfo) => {
+  try {
+    if (!uploadInfo || typeof uploadInfo !== 'object') {
+      return { ok: false, error: 'بيانات الرفع غير صالحة.' };
+    }
+    const buffer = Buffer.from(uploadInfo.base64 || '', 'base64');
+    if (buffer.length === 0) return { ok: false, error: 'الملف المراد رفعه فارغ.' };
+    const res = await backendClient.upload(folderKey, {
+      title: uploadInfo.title || '',
+      description: uploadInfo.description || '',
+      fileName: uploadInfo.fileName || 'ملف',
+      mimeType: uploadInfo.mimeType || 'application/octet-stream',
+      buffer,
+    });
+    return { ok: true, file: res.file };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('drive-folder:delete', async (_event, fileId) => {
+  try {
+    await backendClient.deleteFile(fileId);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('drive-folder:share', async (_event, fileId) => {
+  try {
+    const res = await backendClient.share(fileId);
+    return { ok: true, url: res.url };
   } catch (err) {
     return { ok: false, error: err.message };
   }

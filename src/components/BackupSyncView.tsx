@@ -174,7 +174,16 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
     setIsLocalWorking(true);
     setLocalProgress('');
     try {
-      const folder = settings.localFolder?.trim() || defaultFolder;
+      let folder = settings.localFolder?.trim() || defaultFolder;
+      if (!folder) {
+        // Default folder info may still be loading — fetch it on demand.
+        const e = (window as any).electronAPI;
+        const res = await e?.getDefaultBackupFolder?.();
+        if (res?.ok && res.folder) {
+          folder = res.folder;
+          setDefaultFolder(res.folder);
+        }
+      }
       if (!folder) {
         addToast('error', 'تعذر تحديد مجلد النسخ الاحتياطي.');
         return;

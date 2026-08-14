@@ -32,6 +32,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Google Drive OAuth ───────────────────────────────────────────
   driveAuth: () => ipcRenderer.invoke('drive:auth'),
 
+  // ── Murshid Drive Folder (backed by the Murshid backend) ──────────
+  driveFolder: {
+    status: (profile) => ipcRenderer.invoke('drive-folder:status', profile),
+    list: (folderKey) => ipcRenderer.invoke('drive-folder:list', folderKey),
+    preview: (fileId) => ipcRenderer.invoke('drive-folder:preview', fileId),
+    download: (fileId, folderPath) => ipcRenderer.invoke('drive-folder:download', fileId, folderPath),
+    upload: (folderKey, uploadInfo) => ipcRenderer.invoke('drive-folder:upload', folderKey, uploadInfo),
+    delete: (fileId) => ipcRenderer.invoke('drive-folder:delete', fileId),
+    share: (fileId) => ipcRenderer.invoke('drive-folder:share', fileId),
+  },
+
   // ── Record Cover Service ─────────────────────────────────────────
   cover: {
     listModels: () => ipcRenderer.invoke('cover:list-models'),

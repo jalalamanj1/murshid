@@ -11,6 +11,8 @@ export type ActiveModule =
   | 'RECORDS'
   | 'TEMPLATES'
   | 'BACKUP'
+  | 'DRIVE_LETTERS'
+  | 'DRIVE_FILES'
   | 'SETTINGS';
 
 export interface LicenseInfo {

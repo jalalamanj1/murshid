@@ -11,6 +11,7 @@ import {
   Calendar,
   AlertCircle,
   FileBox,
+  FolderOpen,
 } from 'lucide-react';
 import { ActiveModule, CounselorProfile } from '../types';
 
@@ -46,6 +47,8 @@ export default function DesktopWindow({
       case 'RECORDS': return 'السجلات الارشادية';
       case 'TEMPLATES': return 'أغلفة سجلات الإرشاد';
       case 'BACKUP': return 'النسخ الاحتياطي ومزامنة السحاب';
+      case 'DRIVE_LETTERS': return 'مخاطبات التربية';
+      case 'DRIVE_FILES': return 'الملفات';
       case 'SETTINGS': return 'إعدادات النظام المكتبي';
       default: return 'مرشد';
     }
@@ -76,6 +79,8 @@ export default function DesktopWindow({
                 { id: 'RECORDS', name: 'السجلات الارشادية', icon: FileBox },
                 { id: 'TEMPLATES', name: 'أغلفة سجلات الإرشاد', icon: FileText },
                 { id: 'BACKUP', name: 'النسخ الاحتياطي والمزامنة', icon: Database },
+                { id: 'DRIVE_LETTERS', name: 'مخاطبات التربية', icon: FileText },
+                { id: 'DRIVE_FILES', name: 'الملفات', icon: FolderOpen },
                 { id: 'SETTINGS', name: 'إعدادات النظام المكتبي', icon: Sliders }
               ].map((item) => {
                 const IconComp = item.icon;

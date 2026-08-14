@@ -324,8 +324,8 @@ const { exportService } = require('./ExportService.cjs');
   // rejects file:// redirect URIs. The redirect URI matches the dev server
   // URL that was registered in Google Cloud Console for this Web Application
   // OAuth client (client_secret confirms Web App type).
-  const CLIENT_ID = '580475588026-dbegiao33oj4la66oqaqiritml88erfp.apps.googleusercontent.com';
-  const CLIENT_SECRET = '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';
+  const CLIENT_ID = '580475588026-196m9aepjuhh325nkaffdchrlqnqb5ul.apps.googleusercontent.com';
+  const CLIENT_SECRET = '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';
   const OAUTH_PORT = 3000;
   const OAUTH_REDIRECT = `http://localhost:${OAUTH_PORT}`;
   const OAUTH_SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';

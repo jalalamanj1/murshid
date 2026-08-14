@@ -27,8 +27,8 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const TOKEN_STORAGE = 'murshid_gdrive_token';
-const CLIENT_ID = '580475588026-dbegiao33oj4la66oqaqiritml88erfp.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
+const CLIENT_ID = '580475588026-196m9aepjuhh325nkaffdchrlqnqb5ul.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
 const REDIRECT_URI = window.location.origin;
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',

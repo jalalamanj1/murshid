@@ -17,7 +17,7 @@ import { GoogleDriveAccount, GoogleDriveTokens } from '../types';
 // Replace with your own Google Cloud Console OAuth2 credentials.
 // Create at: https://console.cloud.google.com/apis/credentials
 // Enable "Google Drive API" in the project first.
-const CLIENT_ID = '580475588026-dbegiao33oj4la66oqaqiritml88erfp.apps.googleusercontent.com';
+const CLIENT_ID = '580475588026-196m9aepjuhh325nkaffdchrlqnqb5ul.apps.googleusercontent.com';
 const REDIRECT_URI = window.location.origin;
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';

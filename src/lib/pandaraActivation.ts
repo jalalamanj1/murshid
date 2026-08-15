@@ -69,7 +69,7 @@ function getDeviceInfo() {
     deviceName: navigator.platform,
     machineName: navigator.platform,
     windowsVersion: navigator.userAgent,
-    appVersion: '1.0.0',
+    appVersion: '1.2.5',
   };
 }
 

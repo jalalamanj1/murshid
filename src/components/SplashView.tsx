@@ -8,6 +8,14 @@ export default function SplashView({ onComplete }: SplashViewProps) {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('الاتصال بوحدة التخزين المحلية للبرنامج...');
   const [opacity, setOpacity] = useState(0);
+  const [appVersion, setAppVersion] = useState('1.2.5');
+
+  useEffect(() => {
+    const electron = (window as any).electronAPI;
+    if (electron?.getAppVersion) {
+      electron.getAppVersion().then(setAppVersion).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     const fadeInTimer = setTimeout(() => setOpacity(1), 50);
@@ -92,7 +100,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
 
         {/* Footer */}
         <div className="mt-16 text-[10px] text-muted text-center">
-          جميع الحقوق محفوظة &mdash; النسخة: v1.2.0
+          جميع الحقوق محفوظة &mdash; النسخة: v{appVersion}
         </div>
       </div>
     </div>

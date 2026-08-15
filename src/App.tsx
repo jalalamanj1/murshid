@@ -91,7 +91,7 @@ export default function App() {
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
   const [license, setLicense] = useState<LicenseInfo>({ isActivated: false });
-  const [appVersion, setAppVersion] = useState('1.2.3');
+  const [appVersion, setAppVersion] = useState('1.2.5');
   const [profile, setProfile] = useState<CounselorProfile>({
     fullName: '',
     schoolName: '',

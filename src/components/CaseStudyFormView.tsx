@@ -18,6 +18,7 @@ import {
   CaseClosure, CounselorProfile,
 } from '../types';
 import { getNextCaseNumber } from '../lib/storage';
+import { toArabicDigits } from '../lib/format';
 
 // ── Constants ────────────────────────────────────────────────────────
 const TABS = [
@@ -300,7 +301,7 @@ export default function CaseStudyFormView({
                     { label: 'الصف', value: selectedStudent.classGrade },
                     { label: 'الشعبة', value: selectedStudent.section },
                     { label: 'تاريخ الميلاد', value: selectedStudent.birthDate },
-                    { label: 'العمر', value: calcAge(selectedStudent.birthDate) + ' سنة' },
+                    { label: 'العمر', value: toArabicDigits(calcAge(selectedStudent.birthDate)) + ' سنة' },
                     { label: 'اسم الأب', value: selectedStudent.fatherName || '—' },
                     { label: 'مهنة الأب', value: selectedStudent.parentJob || '—' },
                     { label: 'جنس الطالب', value: selectedStudent.gender === 'MALE' ? 'ذكر' : 'أنثى' },
@@ -425,7 +426,7 @@ export default function CaseStudyFormView({
               {reviews.map((rev, idx) => (
                 <div key={rev.id} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">المراجعة {idx + 1}</span>
+                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">المراجعة {toArabicDigits(idx + 1)}</span>
                     {reviews.length > 1 && (
                       <button onClick={() => removeReview(rev.id)} className="text-rose-400 hover:text-rose-600 cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5" />
@@ -484,7 +485,7 @@ export default function CaseStudyFormView({
                       <tr key={g.id}>
                         <td className="px-2 py-1.5">
                           <input type="text" value={g.goal} onChange={e => updateGoal(g.id, { goal: e.target.value })}
-                            placeholder={`هدف ${idx + 1}`}
+                            placeholder={`هدف ${toArabicDigits(idx + 1)}`}
                             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-office-blue" />
                         </td>
                         <td className="px-2 py-1.5">
@@ -521,7 +522,7 @@ export default function CaseStudyFormView({
               {followUps.map((fu, idx) => (
                 <div key={fu.id} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">المتابعة {idx + 1}</span>
+                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">المتابعة {toArabicDigits(idx + 1)}</span>
                     <button onClick={() => removeFollowUp(fu.id)} className="text-rose-400 hover:text-rose-600 cursor-pointer">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

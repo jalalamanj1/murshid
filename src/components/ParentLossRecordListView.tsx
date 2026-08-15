@@ -13,10 +13,11 @@ import {
 } from 'lucide-react';
 import { ParentLossRecord, Student } from '../types';
 import { exportParentLossRecordPdf } from './ParentLossRecordPdfExport';
+import { toArabicDigits } from '../lib/format';
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
+  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
 }
 
 interface Props {
@@ -168,7 +169,7 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
           </div>
           <div>
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">سجل الطلبة الفاقدين</h2>
-            <p className="text-[11px] text-slate-400">{filtered.length} سجل مسجل</p>
+            <p className="text-[11px] text-slate-400">{toArabicDigits(filtered.length)} سجل مسجل</p>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileText, Loader2, AlertTriangle, Table } from 'lucide-react';
 import { isExcludedField, FIELD_LABELS } from '../lib/exportFields';
+import { toArabicDigits } from '../lib/format';
 
 interface ExportSectionProps {
   recordType: string;       // e.g. 'health-record', 'study-case'
@@ -116,7 +117,7 @@ export default function ExportSection({ recordType, recordLabel, records, hasTem
           </h3>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
             {records.length > 0
-              ? `${records.length} سجل/سجلات للتصدير`
+              ? `${toArabicDigits(records.length)} سجل/سجلات للتصدير`
               : 'لا توجد سجلات متاحة للتصدير'}
           </p>
         </div>

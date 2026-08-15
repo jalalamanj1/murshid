@@ -311,14 +311,15 @@ export async function deleteSharedFile(fileId: string): Promise<void> {
   }
 }
 
-/** Time elapsed since a date, as a short Arabic label. */
+/** Time elapsed since a date, as a short Arabic label (Arabic-Indic digits). */
 export function timeAgo(iso: string): string {
   if (!iso) return '';
   const then = new Date(iso).getTime();
   if (isNaN(then)) return '';
   const diff = Date.now() - then;
   if (diff < 60_000) return 'الآن';
-  if (diff < 3_600_000) return `قبل ${Math.floor(diff / 60_000)} دقيقة`;
-  if (diff < 86_400_000) return `قبل ${Math.floor(diff / 3_600_000)} ساعة`;
-  return `قبل ${Math.floor(diff / 86_400_000)} يوم`;
+  const toAr = (n: number) => String(n).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+  if (diff < 3_600_000) return `قبل ${toAr(Math.floor(diff / 60_000))} دقيقة`;
+  if (diff < 86_400_000) return `قبل ${toAr(Math.floor(diff / 3_600_000))} ساعة`;
+  return `قبل ${toAr(Math.floor(diff / 86_400_000))} يوم`;
 }

@@ -13,10 +13,11 @@ import {
   GraduationCap, Sparkles, AlertCircle, FileText, Download, X, UserX, FilePlus,
 } from 'lucide-react';
 import { SpecialCaseRecord, SpecialCaseCategory, SPECIAL_CASE_CATEGORY_LABELS, Student } from '../types';
+import { toArabicDigits } from '../lib/format';
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
+  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
 }
 
 interface Props {
@@ -368,7 +369,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
           </div>
           <div>
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">سجل الحالات الخاصة</h2>
-            <p className="text-[11px] text-slate-400">{filtered.length} سجل مسجل</p>
+            <p className="text-[11px] text-slate-400">{toArabicDigits(filtered.length)} سجل مسجل</p>
           </div>
 
           {/* Export + New actions */}
@@ -484,7 +485,7 @@ export default function SpecialCaseListView({ records, students, onEdit, onDelet
                   )}
                   {isAbsent && r.absenceDays > 0 && (
                     <span className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-md border border-red-200 dark:border-red-900/30">
-                      {r.absenceDays} يوم
+                      {toArabicDigits(r.absenceDays)} يوم
                     </span>
                   )}
                 </div>

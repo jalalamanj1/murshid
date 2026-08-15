@@ -406,8 +406,9 @@ export async function getStorageUsage(
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  const toAr = (n: string) => n.replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+  if (bytes < 1024) return toAr(String(bytes)) + ' B';
+  if (bytes < 1024 * 1024) return toAr((bytes / 1024).toFixed(1)) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return toAr((bytes / (1024 * 1024)).toFixed(1)) + ' MB';
+  return toAr((bytes / (1024 * 1024 * 1024)).toFixed(2)) + ' GB';
 }

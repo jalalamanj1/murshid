@@ -3,6 +3,7 @@ import {
   Upload, Download, FileText, Search, Loader2, AlertTriangle, CheckCircle,
   File, Image, FileSpreadsheet, ChevronDown, X, Eye, FolderOpen,
 } from 'lucide-react';
+import { toArabicDigits } from '../lib/format';
 
 const ROOT_FOLDER_ID = '1U5Fows578m6t9WJNe0HNWYG2m0D6HiDO';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
@@ -55,7 +56,7 @@ function getFileColor(mime: string) {
 
 function formatDate(iso?: string) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
+  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
 }
 
 export default function OfficialLettersView() {
@@ -291,7 +292,7 @@ export default function OfficialLettersView() {
           </div>
           <div>
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">مخاطبات رسمية</h2>
-            <p className="text-[10px] text-slate-400">{files.length} ملف</p>
+            <p className="text-[10px] text-slate-400">{toArabicDigits(files.length)} ملف</p>
           </div>
         </div>
 
@@ -481,7 +482,7 @@ export default function OfficialLettersView() {
                 {selectedFile.size && (
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 font-bold min-w-[70px]">الحجم:</span>
-                    <span className="text-slate-700 dark:text-slate-300">{selectedFile.size}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{toArabicDigits(selectedFile.size)}</span>
                   </div>
                 )}
                 {selectedFile.createdTime && (

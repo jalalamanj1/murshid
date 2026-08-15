@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { RefreshCw, Download, Loader2, AlertTriangle, CheckCircle, ArrowUpCircle } from 'lucide-react';
+import { toArabicDigits } from '../lib/format';
 
 type UpdateStatus =
   | { type: 'idle' }
@@ -76,9 +77,9 @@ export default function UpdateSettingsView() {
         />
       </div>
       <div className="flex justify-between text-[10px] text-muted">
-        <span>{status.percent}%</span>
+        <span>{toArabicDigits(status.percent)}%</span>
         {status.bytesPerSecond && (
-          <span>{Math.round(status.bytesPerSecond / 1024)} KB/s</span>
+          <span>{toArabicDigits(Math.round(status.bytesPerSecond / 1024))} KB/s</span>
         )}
       </div>
     </div>
@@ -110,7 +111,7 @@ export default function UpdateSettingsView() {
       case 'available':
         return `يتوفر إصدار ${status.version}. جاري التحميل...`;
       case 'downloading':
-        return `جاري تحميل التحديث (${status.percent}%)`;
+        return `جاري تحميل التحديث (${toArabicDigits(status.percent)}%)`;
       case 'downloaded':
         return `تم تحميل الإصدار ${status.version}. انقر على زر التثبيت لإكمال التحديث.`;
       case 'error':

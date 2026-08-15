@@ -11,13 +11,13 @@ import {
 } from 'lucide-react';
 import { Student, CounselorProfile, CounselingRecord } from '../types';
 import { GetGradesFromProfile, normalizeClassGrade, normalizeExcelDate } from '../lib/gradeService';
-import { academicYear } from '../lib/format';
+import { academicYear, toArabicDigits } from '../lib/format';
 
 // Helper: display birthDate — if it's an Excel serial number string, convert it
 function displayDate(val: string): string {
   if (!val) return '';
   const converted = normalizeExcelDate(val);
-  return converted !== val ? converted : val;
+  return toArabicDigits(converted !== val ? converted : val);
 }
 import ImportWizard from './ImportWizard';
 import { STUDENT_FORM_FIELDS, STUDENT_FIELD_KEYS } from '../lib/studentFormFields';
@@ -322,7 +322,7 @@ export default function StudentManagementView({
           <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Users className="w-5 h-5 text-office-blue" />
             <span>إدارة شؤون الطلاب</span>
-            <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 px-2.5 py-0.5 rounded-full font-bold">{students.length} طالب</span>
+            <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 px-2.5 py-0.5 rounded-full font-bold">{toArabicDigits(students.length)} طالب</span>
           </h3>
           <p className="text-[11px] text-slate-400 dark:text-slate-400">إضافة وتعديل وحذف وطباعة واستيراد وتصدير ملفات الطلاب.</p>
         </div>
@@ -391,7 +391,7 @@ export default function StudentManagementView({
                   </td>
                   <td className="p-3 text-slate-600 dark:text-slate-300">{student.classGrade}</td>
                     <td className="p-3 font-mono text-slate-500 dark:text-slate-400">{displayDate(student.birthDate)}</td>
-                  <td className="p-3 text-center"><span className="px-2 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 rounded-md font-mono font-black border border-blue-100 dark:border-blue-900/40">{getStudentRecordCount(student.id)}</span></td>
+                  <td className="p-3 text-center"><span className="px-2 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 rounded-md font-mono font-black border border-blue-100 dark:border-blue-900/40">{toArabicDigits(getStudentRecordCount(student.id))}</span></td>
                   <td className="p-3">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => handleViewStudent(student)} className="p-1.5 text-slate-400 hover:text-office-blue dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="عرض الملف"><Eye className="w-4 h-4" /></button>
@@ -551,7 +551,7 @@ export default function StudentManagementView({
               </div>
 
               <div className="bg-blue-50/50 dark:bg-blue-950/10 rounded-xl p-4 border border-blue-200 dark:border-blue-900/30 flex justify-between items-center">
-                <p className="text-xs font-black text-blue-800 dark:text-blue-300">السجلات الإرشادية: {getStudentRecordCount(viewingStudent.id)} سجلات</p>
+                <p className="text-xs font-black text-blue-800 dark:text-blue-300">السجلات الإرشادية: {toArabicDigits(getStudentRecordCount(viewingStudent.id))} سجلات</p>
                 {onOpenRecords && <button onClick={() => { setViewingStudent(null); onOpenRecords(); }} className="bg-office-blue hover:bg-office-hover text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1">فتح السجلات<ChevronLeft className="w-3.5 h-3.5" /></button>}
               </div>
 

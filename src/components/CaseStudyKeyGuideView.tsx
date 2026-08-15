@@ -12,11 +12,11 @@ import {
   ArrowRight, Search, FileText, Download, Printer, BookOpen,
 } from 'lucide-react';
 import { CaseStudy, Student, CounselorProfile } from '../types';
-import { academicYear } from '../lib/format';
+import { academicYear, toArabicDigits } from '../lib/format';
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
+  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
 }
 
 interface EnrichedCase {
@@ -180,7 +180,7 @@ export default function CaseStudyKeyGuideView({ students, profile, caseStudies, 
           </div>
           <div>
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">سجل الدليل (المفتاح) لدراسة الحالة</h2>
-            <p className="text-[11px] text-slate-400">{sorted.length} من أصل {caseStudies.length} سجل</p>
+            <p className="text-[11px] text-slate-400">{toArabicDigits(sorted.length)} من أصل {toArabicDigits(caseStudies.length)} سجل</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -256,7 +256,7 @@ export default function CaseStudyKeyGuideView({ students, profile, caseStudies, 
                     className={`hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-colors cursor-pointer ${
                       i % 2 === 0 ? 'bg-white dark:bg-[#1e293b]' : 'bg-slate-50/50 dark:bg-slate-900/30'
                     }`}>
-                    <td className={tdCls + ' w-12 text-center font-mono text-slate-400'}>{i + 1}</td>
+                    <td className={tdCls + ' w-12 text-center font-mono text-slate-400'}>{toArabicDigits(i + 1)}</td>
                     <td className={tdCls + ' font-black text-slate-800 dark:text-slate-100'}>{e.cs.studentName}</td>
                     <td className={tdCls}>
                       <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/40 font-mono">

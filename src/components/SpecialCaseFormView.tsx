@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SpecialCaseRecord, SpecialCaseCategory, SPECIAL_CASE_CATEGORY_LABELS, Student } from '../types';
 import { getNextSpecialCaseNumber } from '../lib/storage';
+import { toArabicDigits } from '../lib/format';
 
 const TALENT_OPTIONS = [
   'تفوق دراسي',
@@ -234,7 +235,7 @@ export default function SpecialCaseFormView({
           <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-2">
             {allowMultiple && (
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500">
-                الطلاب المشمولون في السجل ({selectedStudents.length})
+                الطلاب المشمولون في السجل ({toArabicDigits(selectedStudents.length)})
               </p>
             )}
             <div className="space-y-2">

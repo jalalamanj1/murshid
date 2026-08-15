@@ -624,6 +624,8 @@ ipcMain.handle('update:install', async () => {
   }
 });
 
+ipcMain.handle('app:version', () => app.getVersion());
+
 const sessionManager = require('./session-manager.cjs');
 
 ipcMain.handle('session:create', async (_event, title) => {

@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openDialog: (filters) => ipcRenderer.invoke('dialog:open', filters),
   pickFolder: () => ipcRenderer.invoke('dialog:pick-folder'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  getAppVersion: () => ipcRenderer.invoke('app:version'),
 
   // ── Session Management ──────────────────────────────────────────
   createSession: (title) => ipcRenderer.invoke('session:create', title),

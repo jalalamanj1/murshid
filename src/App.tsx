@@ -91,6 +91,7 @@ export default function App() {
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
   const [license, setLicense] = useState<LicenseInfo>({ isActivated: false });
+  const [appVersion, setAppVersion] = useState('1.2.3');
   const [profile, setProfile] = useState<CounselorProfile>({
     fullName: '',
     schoolName: '',
@@ -155,6 +156,13 @@ export default function App() {
         setGdriveConnected(!!account?.tokens?.access_token);
         setGdriveEmail(account?.email || account?.tokens?.email || '');
       } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    const electron = (window as any).electronAPI;
+    if (electron?.getAppVersion) {
+      electron.getAppVersion().then(setAppVersion).catch(() => {});
     }
   }, []);
 
@@ -1022,7 +1030,7 @@ export default function App() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">الإصدار الحالي:</span>
-                      <span className="text-xs font-mono text-muted">v1.2.0</span>
+                      <span className="text-xs font-mono text-muted">v{appVersion}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-main">المطور:</span>

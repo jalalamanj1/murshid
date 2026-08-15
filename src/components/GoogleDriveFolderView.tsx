@@ -20,6 +20,7 @@ import {
   filterMetadata, FileMetadata,
 } from '../lib/googleSheetsService';
 import { loadProfile } from '../lib/storage';
+import { toLatinDigits } from '../lib/format';
 
 // ── Configuration ────────────────────────────────────────────────────
 const ROOT_FOLDER_ID = '1pNFVBUHEr0pRlo2w2b_r-JIGHdFJYo8I';
@@ -70,28 +71,24 @@ type SortField = 'name' | 'mimeType' | 'size' | 'modifiedTime' | 'category' | 'u
 type SortDir = 'asc' | 'desc';
 
 // ── Helpers ──────────────────────────────────────────────────────────
-function toAr(n: string): string {
-  return n.replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
-}
-
 function formatSize(bytes: string | undefined): string {
   if (!bytes) return '—';
   const b = parseInt(bytes, 10);
   if (isNaN(b) || b === 0) return '—';
-  if (b < 1024) return toAr(String(b)) + ' B';
-  if (b < 1024 * 1024) return toAr((b / 1024).toFixed(1)) + ' KB';
-  if (b < 1024 * 1024 * 1024) return toAr((b / (1024 * 1024)).toFixed(1)) + ' MB';
-  return toAr((b / (1024 * 1024 * 1024)).toFixed(2)) + ' GB';
+  if (b < 1024) return toLatinDigits(String(b)) + ' B';
+  if (b < 1024 * 1024) return toLatinDigits((b / 1024).toFixed(1)) + ' KB';
+  if (b < 1024 * 1024 * 1024) return toLatinDigits((b / (1024 * 1024)).toFixed(1)) + ' MB';
+  return toLatinDigits((b / (1024 * 1024 * 1024)).toFixed(2)) + ' GB';
 }
 
 function formatDate(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return toAr(new Date(iso).toLocaleDateString('ar-IQ', {
+    return toLatinDigits(new Date(iso).toLocaleDateString('ar-IQ', {
       year: 'numeric', month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit',
     }));
-  } catch { return toAr(iso); }
+  } catch { return toLatinDigits(iso); }
 }
 
 function getFileIcon(mimeType: string) {
@@ -685,11 +682,11 @@ export default function GoogleDriveFolderView() {
         setDownloadProgress('تم التحميل بنجاح!');
       } else {
         for (let i = 0; i < selected.length; i++) {
-          setDownloadProgress(`جاري تحميل ${toAr(String(i + 1))}/${toAr(String(selected.length))}: ${selected[i].name}`);
+          setDownloadProgress(`جاري تحميل ${toLatinDigits(String(i + 1))}/${toLatinDigits(String(selected.length))}: ${selected[i].name}`);
           await downloadFile(selected[i]);
           await new Promise(r => setTimeout(r, 500));
         }
-        setDownloadProgress(`تم تحميل ${toAr(String(selected.length))} ملف بنجاح!`);
+        setDownloadProgress(`تم تحميل ${toLatinDigits(String(selected.length))} ملف بنجاح!`);
       }
     } catch {
       setDownloadProgress('حدث خطأ أثناء التحميل.');
@@ -902,7 +899,7 @@ export default function GoogleDriveFolderView() {
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">Google Drive</h2>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
               {userEmail || (metadataMap.size > 0
-                ? `${toAr(String(metadataMap.size))} ملف مسجل في السجل`
+                ? `${toLatinDigits(String(metadataMap.size))} ملف مسجل في السجل`
                 : 'استعراض ورفع وتحميل الملفات المشتركة')}
             </p>
           </div>
@@ -978,7 +975,7 @@ export default function GoogleDriveFolderView() {
         </div>
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{toAr(String(selectedIds.size))} محدد</span>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{toLatinDigits(String(selectedIds.size))} محدد</span>
             <button onClick={handleDownload}
               className="bg-office-blue hover:bg-office-hover text-white px-4 py-2 text-[11px] font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm transition-colors">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
@@ -1199,8 +1196,8 @@ export default function GoogleDriveFolderView() {
 
       <div className="text-center">
         <p className="text-[10px] text-slate-400">
-          {toAr(String(displayed.length))} عنصر{search ? ` (من أصل ${toAr(String(files.length))})` : ''}
-          {metadataMap.size > 0 && ` • ${toAr(String(metadataMap.size))} سجل بيانات`}
+          {toLatinDigits(String(displayed.length))} عنصر{search ? ` (من أصل ${toLatinDigits(String(files.length))})` : ''}
+          {metadataMap.size > 0 && ` • ${toLatinDigits(String(metadataMap.size))} سجل بيانات`}
         </p>
       </div>
 

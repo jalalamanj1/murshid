@@ -7,7 +7,7 @@ import {
   readExcel, matchHeaders, buildImportSummary, importData,
   ExcelData, MatchResult,
 } from '../lib/excelImporter';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 // ── Props ─────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ export default function ImportWizard<T>({
           {step === 'mapping' && excelData && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-500 font-mono">{fileName} — {toArabicDigits(excelData.rows.length)} صف، {toArabicDigits(excelData.headers.length)} عمود</p>
+                <p className="text-xs text-slate-500 font-mono">{fileName} — {toLatinDigits(excelData.rows.length)} صف، {toLatinDigits(excelData.headers.length)} عمود</p>
                 <button onClick={handleAutoMap} className="text-[11px] text-office-blue hover:underline font-bold flex items-center gap-1 cursor-pointer">
                   <Sparkles className="w-3.5 h-3.5" />
                   كشف تلقائي
@@ -208,10 +208,10 @@ export default function ImportWizard<T>({
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
                 <h4 className="text-xs font-black text-blue-800">ملخص الاستيراد</h4>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex justify-between"><span className="text-blue-600">إجمالي الأعمدة:</span><span className="font-bold text-blue-800">{toArabicDigits(summary.totalColumns)}</span></div>
-                  <div className="flex justify-between"><span className="text-blue-600">مرتبطة تلقائياً:</span><span className="font-bold text-emerald-600">{toArabicDigits(summary.autoMatched)}</span></div>
-                  <div className="flex justify-between"><span className="text-blue-600">مرتبطة يدوياً:</span><span className="font-bold text-amber-600">{toArabicDigits(summary.manuallyMapped)}</span></div>
-                  <div className="flex justify-between"><span className="text-blue-600">غير مرتبطة:</span><span className="font-bold text-rose-600">{toArabicDigits(summary.unmatched.length)}</span></div>
+                  <div className="flex justify-between"><span className="text-blue-600">إجمالي الأعمدة:</span><span className="font-bold text-blue-800">{toLatinDigits(summary.totalColumns)}</span></div>
+                  <div className="flex justify-between"><span className="text-blue-600">مرتبطة تلقائياً:</span><span className="font-bold text-emerald-600">{toLatinDigits(summary.autoMatched)}</span></div>
+                  <div className="flex justify-between"><span className="text-blue-600">مرتبطة يدوياً:</span><span className="font-bold text-amber-600">{toLatinDigits(summary.manuallyMapped)}</span></div>
+                  <div className="flex justify-between"><span className="text-blue-600">غير مرتبطة:</span><span className="font-bold text-rose-600">{toLatinDigits(summary.unmatched.length)}</span></div>
                 </div>
               </div>
 
@@ -254,7 +254,7 @@ export default function ImportWizard<T>({
               <div className="w-full bg-card rounded-full h-2 max-w-md mx-auto">
                 <div className="bg-office-blue h-2 rounded-full transition-all duration-200" style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }} />
               </div>
-              <p className="text-xs text-slate-400">{toArabicDigits(progress)} / {toArabicDigits(total)}</p>
+              <p className="text-xs text-slate-400">{toLatinDigits(progress)} / {toLatinDigits(total)}</p>
             </div>
           )}
 
@@ -262,7 +262,7 @@ export default function ImportWizard<T>({
           {step === 'done' && (
             <div className="text-center py-12 space-y-4">
               <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto" />
-              <p className="text-sm font-black text-emerald-700">✅ تم استيراد {toArabicDigits(progress)} طالب بنجاح!</p>
+              <p className="text-sm font-black text-emerald-700">✅ تم استيراد {toLatinDigits(progress)} طالب بنجاح!</p>
               <button onClick={onClose} className="bg-office-blue hover:bg-office-hover text-white font-black px-6 py-2 rounded-lg text-xs cursor-pointer shadow-sm">إغلاق</button>
             </div>
           )}

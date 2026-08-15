@@ -8,11 +8,11 @@
 
 import jsPDF from 'jspdf';
 import { HealthRecord, Student } from '../types';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
-  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' }));
+  return toLatinDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' }));
 }
 
 export function exportHealthRecordPdf(record: HealthRecord, _students: Student[]): void {

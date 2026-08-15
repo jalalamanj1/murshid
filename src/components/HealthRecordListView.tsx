@@ -13,11 +13,11 @@ import {
 } from 'lucide-react';
 import { HealthRecord, Student } from '../types';
 import { exportHealthRecordPdf } from './HealthRecordPdfExport';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
-  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
+  return toLatinDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
 }
 
 interface Props {
@@ -170,7 +170,7 @@ export default function HealthRecordListView({ records, students, onEdit, onDele
           </div>
           <div>
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">سجل الحالة الصحية</h2>
-            <p className="text-[11px] text-slate-400">{toArabicDigits(filtered.length)} سجل مسجل</p>
+            <p className="text-[11px] text-slate-400">{toLatinDigits(filtered.length)} سجل مسجل</p>
           </div>
         </div>
       </div>

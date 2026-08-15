@@ -86,7 +86,7 @@ export default function ActivationView({ onActivated }: ActivationViewProps) {
     const trimmedKey = key.trim();
     if (!trimmedKey) { setError('الرجاء إدخال مفتاح التفعيل'); return; }
     if (!/^\d{8}$/.test(trimmedKey)) {
-      setError('مفتاح التفعيل يجب أن يتكون من ٨ أرقام');
+      setError('مفتاح التفعيل يجب أن يتكون من 8 أرقام');
       return;
     }
     setLoading(true);

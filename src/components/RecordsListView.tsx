@@ -29,7 +29,7 @@ import {
   X
 } from 'lucide-react';
 import { isExcludedField, FIELD_LABELS } from '../lib/exportFields';
-import { academicYear, toArabicDigits } from '../lib/format';
+import { academicYear, toLatinDigits } from '../lib/format';
 import { CounselingRecord, RecordType, Student, DailyActivityItem, CounselorProfile } from '../types';
 
 interface RecordsListViewProps {
@@ -537,7 +537,7 @@ export default function RecordsListView({
             <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <span>{recordTypeName}</span>
               <span className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 px-2.5 py-0.5 rounded-full font-bold">
-                {toArabicDigits(filteredRecords.length)} سجلات
+                {toLatinDigits(filteredRecords.length)} سجلات
               </span>
             </h3>
             <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1">
@@ -912,7 +912,7 @@ export default function RecordsListView({
                             سجل النشاط اليومي لـ ( {rec.day || 'غير محدد'} )
                           </span>
                           <span className="bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
-                            {toArabicDigits(activityCount)} أنشطة منفذة
+                            {toLatinDigits(activityCount)} أنشطة منفذة
                           </span>
                         </div>
                       </div>
@@ -1168,7 +1168,7 @@ export default function RecordsListView({
                     <p className="font-extrabold text-[14px]">سجل النشاط اليومي للمرشد</p>
                     <p>العام الدراسي: {academicYear(profile.academicYear) || '2026-2025'}</p>
                     <p>المرشد: {profile.fullName || 'المرشد التربوي'}</p>
-                    <p className="font-mono">تاريخ الطباعة: {toArabicDigits(new Date().toISOString().split('T')[0])}</p>
+                    <p className="font-mono">تاريخ الطباعة: {toLatinDigits(new Date().toISOString().split('T')[0])}</p>
                   </div>
                 </div>
 
@@ -1268,7 +1268,7 @@ export default function RecordsListView({
                     <p className="font-extrabold text-[14px]">{recordTypeName}</p>
                     <p>العام الدراسي: {academicYear(profile.academicYear) || '2026-2025'}</p>
                     <p>المرشد: {profile.fullName || 'المرشد التربوي'}</p>
-                    <p className="font-mono">تاريخ الطباعة: {toArabicDigits(new Date().toISOString().split('T')[0])}</p>
+                    <p className="font-mono">تاريخ الطباعة: {toLatinDigits(new Date().toISOString().split('T')[0])}</p>
                   </div>
                 </div>
 

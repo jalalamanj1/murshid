@@ -31,7 +31,7 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { Student, CounselingRecord, CounselorProfile, RecordType, DailyActivityItem } from '../types';
-import { academicYear, toArabicDigits } from '../lib/format';
+import { academicYear, toLatinDigits } from '../lib/format';
 
 interface TodoItem {
   id: string;
@@ -410,7 +410,7 @@ export default function DashboardView({
           </div>
           <div>
             <p className="text-xs text-muted font-bold">إجمالي الطلاب</p>
-            <h3 className="text-4xl font-extrabold text-main mt-1">{toArabicDigits(totalStudents)}</h3>
+            <h3 className="text-4xl font-extrabold text-main mt-1">{toLatinDigits(totalStudents)}</h3>
           </div>
         </div>
         <div className="card flex items-center gap-5 hover:border-primary transition-colors">
@@ -469,7 +469,7 @@ export default function DashboardView({
               </div>
               <h3 className="text-xs font-bold text-main truncate">قنوات تيليغرام مفيدة للمرشد التربوي</h3>
             </div>
-            <span className="text-[10px] text-muted bg-bg-hover px-2.5 py-1 rounded-md font-bold shrink-0">٦ مصادر متميزة</span>
+            <span className="text-[10px] text-muted bg-bg-hover px-2.5 py-1 rounded-md font-bold shrink-0">6 مصادر متميزة</span>
           </div>
           <div className="space-y-3 mt-4 flex-1 min-h-0 overflow-y-auto pe-1">
             {[

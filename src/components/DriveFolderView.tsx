@@ -60,7 +60,7 @@ import {
   OwnUpload,
 } from '../lib/publicDrive';
 import { loadProfile } from '../lib/storage';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 interface DriveFolderViewProps {
   folderKey: 'letters' | 'files';
@@ -451,7 +451,7 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
               </div>
               <div className="flex-1">
                 <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 line-clamp-2 break-all">{file.name}</p>
-                <p className="text-[9px] text-slate-400 mt-1">{toArabicDigits(file.modified)}</p>
+                <p className="text-[9px] text-slate-400 mt-1">{toLatinDigits(file.modified)}</p>
                 {isFilesTab && ownUploads[file.id] && (
                   <div className="mt-1.5 space-y-0.5">
                     <p className="text-[9px] font-bold text-office-blue dark:text-blue-400 flex items-center gap-1">
@@ -513,7 +513,7 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{toArabicDigits(file.modified || '—')}</td>
+                    <td className="px-4 py-3 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{toLatinDigits(file.modified || '—')}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button

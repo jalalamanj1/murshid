@@ -14,7 +14,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { ActiveModule, CounselorProfile } from '../types';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 interface DesktopWindowProps {
   profile: CounselorProfile;
@@ -38,8 +38,8 @@ export default function DesktopWindow({
     return () => clearInterval(timer);
   }, []);
 
-  const timeString = toArabicDigits(time.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
-  const dateString = toArabicDigits(time.toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+  const timeString = toLatinDigits(time.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+  const dateString = toLatinDigits(time.toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
 
   const getModuleTitle = (mod: ActiveModule) => {
     switch (mod) {

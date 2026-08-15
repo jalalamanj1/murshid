@@ -14,7 +14,7 @@ import {
   Filter, ChevronDown, Printer, BookOpen, Activity,
 } from 'lucide-react';
 import { CaseStudy, Student, CounselorProfile } from '../types';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 const PROGRESS_MAP: Record<string, string> = {
   IMPROVED_HIGH: 'تحسن كبير',
@@ -33,7 +33,7 @@ const OUTCOME_MAP: Record<string, string> = {
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
-  return toArabicDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
+  return toLatinDigits(new Date(iso).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' }));
 }
 
 interface Props {
@@ -148,11 +148,11 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
         {/* Reviews */}
         {selected.reviews.length > 0 && (
           <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">المراجعات ({toArabicDigits(selected.reviews.length)})</h3>
+            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">المراجعات ({toLatinDigits(selected.reviews.length)})</h3>
             {selected.reviews.map((rev, i) => (
               <div key={rev.id} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40">المراجعة {toArabicDigits(i + 1)}</span>
+                  <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40">المراجعة {toLatinDigits(i + 1)}</span>
                   <span className="text-[10px] text-slate-400">{fmtDate(rev.date)} — {rev.day}</span>
                 </div>
                 <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{rev.observation || '—'}</p>
@@ -164,7 +164,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
         {/* Treatment Goals */}
         {selected.treatmentGoals.length > 0 && (
           <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">البرنامج العلاجي ({toArabicDigits(selected.treatmentGoals.length)})</h3>
+            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">البرنامج العلاجي ({toLatinDigits(selected.treatmentGoals.length)})</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-right">
                 <thead>
@@ -177,7 +177,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {selected.treatmentGoals.map((g, i) => (
                     <tr key={g.id}>
-                      <td className="px-3 py-2 text-[11px] text-slate-400 font-bold">{toArabicDigits(i + 1)}</td>
+                      <td className="px-3 py-2 text-[11px] text-slate-400 font-bold">{toLatinDigits(i + 1)}</td>
                       <td className="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-bold">{g.goal || '—'}</td>
                       <td className="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-bold">{g.actions || '—'}</td>
                     </tr>
@@ -191,11 +191,11 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
         {/* Follow-ups */}
         {selected.followUps.length > 0 && (
           <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">المتابعات ({toArabicDigits(selected.followUps.length)})</h3>
+            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800">المتابعات ({toLatinDigits(selected.followUps.length)})</h3>
             {selected.followUps.map((fu, i) => (
               <div key={fu.id} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40">المتابعة {toArabicDigits(i + 1)}</span>
+                  <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40">المتابعة {toLatinDigits(i + 1)}</span>
                   <span className="text-[10px] text-slate-400">{fmtDate(fu.date)} — {fu.day}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                     fu.progress === 'IMPROVED_HIGH' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' :
@@ -265,7 +265,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
           </div>
           <div>
             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">سجل دراسة الحالة</h2>
-            <p className="text-[11px] text-slate-400">{toArabicDigits(filtered.length)} حالة مسجلة</p>
+            <p className="text-[11px] text-slate-400">{toLatinDigits(filtered.length)} حالة مسجلة</p>
           </div>
         </div>
       </div>
@@ -341,12 +341,12 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
                     </span>
                   ))}
                   {cs.caseTypes.length > 3 && (
-                    <span className="text-[9px] text-slate-400 px-1.5 py-0.5">+{toArabicDigits(cs.caseTypes.length - 3)}</span>
+                    <span className="text-[9px] text-slate-400 px-1.5 py-0.5">+{toLatinDigits(cs.caseTypes.length - 3)}</span>
                   )}
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] text-slate-400">
-                    {toArabicDigits(cs.followUps.length)} متابعة — {toArabicDigits(cs.reviews.length)} مراجعة
+                    {toLatinDigits(cs.followUps.length)} متابعة — {toLatinDigits(cs.reviews.length)} مراجعة
                   </span>
                   <span className="text-[10px] font-black text-office-blue dark:text-blue-400 group-hover:underline">
                     عرض التفاصيل ←

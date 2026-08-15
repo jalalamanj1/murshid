@@ -67,7 +67,7 @@ import {
   CloudBackupFile,
 } from '../lib/googleDriveService';
 import { createBackupBlob } from '../lib/backupService';
-import { toArabicDigits } from '../lib/format';
+import { toLatinDigits } from '../lib/format';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -348,7 +348,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
   const fmtDate = (iso?: string) => {
     if (!iso) return 'لم يتم بعد';
     const d = new Date(iso);
-    return toArabicDigits(d.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    return toLatinDigits(d.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
   };
 
   // ── Render ────────────────────────────────────────────────────
@@ -407,7 +407,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
           </div>
           <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">عدد النسخ المحفوظة</span>
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{toArabicDigits(settings.backupHistory.filter(h => h.type === 'LOCAL').length)}</span>
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{toLatinDigits(settings.backupHistory.filter(h => h.type === 'LOCAL').length)}</span>
           </div>
         </div>
 
@@ -610,7 +610,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
             <History className="w-4 h-4 text-office-blue dark:text-blue-400" />
             <span className="text-xs font-black text-slate-800 dark:text-slate-100">سجل النسخ الاحتياطية</span>
             <span className="px-2 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/50 text-office-blue dark:text-blue-400 rounded-md font-mono font-black border border-blue-100 dark:border-blue-900/40">
-              {toArabicDigits(settings.backupHistory.length)}
+              {toLatinDigits(settings.backupHistory.length)}
             </span>
           </div>
           {showHistory ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -654,7 +654,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
                           {entry.fileName}
                         </td>
                         <td className="px-4 py-2.5 text-[11px] text-slate-600 dark:text-slate-400 font-bold">
-                          {toArabicDigits(entry.size)}
+                          {toLatinDigits(entry.size)}
                         </td>
                         <td className="px-4 py-2.5">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md ${
@@ -789,7 +789,7 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
                       <span className="text-slate-700 dark:text-slate-300">{file.name}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-slate-400">{toArabicDigits(file.size)}</span>
+                      <span className="text-[10px] text-slate-400">{toLatinDigits(file.size)}</span>
                       <span className="text-[10px] text-slate-400">{fmtDate(file.createdTime)}</span>
                     </div>
                   </button>

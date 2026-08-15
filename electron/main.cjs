@@ -17,9 +17,6 @@ const updateManager = require('./update-manager.cjs');
 // ── Application-wide Zoom ─────────────────────────────────────────────
 const zoom = require('./zoom.cjs');
 
-// ── Murshid Backend API Client ────────────────────────────────────────
-const { client: backendClient, setProfile: setBackendProfile } = require('./backend-client.cjs');
-
 // ── Integrity Check ───────────────────────────────────────────────────
 const { verifyIntegrity, isBanned, banDevice, getHwid } = require('./integrity.cjs');
 
@@ -303,41 +300,82 @@ ipcMain.handle('backup:write-local', async (_event, folderPath, fileName, base64
   }
 });
 
-// ── Murshid Drive Folder IPC ─────────────────────────────────────────
-// Uses the backend (owner-side Google Drive). Owner credentials never
-// enter this process — all Drive access goes through the Murshid API.
-ipcMain.handle('drive-folder:status', async (_event, profile) => {
+// ── Public Google Drive Folders ──────────────────────────────────────
+// The مخاطبات التربية and ملفات folders are PUBLIC folders owned by the
+// app owner. Their contents are read without any user login via Google's
+// public "embedded folder view" page (works for folders shared with
+// "anyone with the link"). No OAuth, no backend, no access to the user's
+// own Drive. This is completely separate from Google Login / Online
+// Backup (drive:auth above).
+
+function decodeHtmlEntities(str) {
+  return String(str)
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function parseEmbeddedFolderView(html) {
+  const files = [];
+  const blocks = String(html).split('<div class="flip-entry"').slice(1);
+  for (const block of blocks) {
+    const idMatch = block.match(/id="entry-([^"]+)"/);
+    if (!idMatch) continue;
+    const mimeMatch = block.match(/drive-thirdparty\.googleusercontent\.com\/16\/type\/([^"]+)/);
+    const titleMatch = block.match(/<div class="flip-entry-title">([\s\S]*?)<\/div>/);
+    const modMatch = block.match(/flip-entry-last-modified"><div>([\s\S]*?)<\/div>/);
+    const thumbMatch = block.match(/flip-entry-thumb"><img src="([^"]+)"/);
+    files.push({
+      id: idMatch[1],
+      name: decodeHtmlEntities(titleMatch ? titleMatch[1] : ''),
+      mimeType: mimeMatch ? mimeMatch[1] : '',
+      thumbnail: thumbMatch ? thumbMatch[1] : '',
+      modified: modMatch ? modMatch[1].trim() : '',
+    });
+  }
+  return files;
+}
+
+ipcMain.handle('drive-public:list', async (_event, folderId) => {
   try {
-    setBackendProfile(profile);
-    const user = await backendClient.status();
-    return { ok: true, user };
+    if (!folderId || typeof folderId !== 'string') {
+      return { ok: false, error: 'معرّف المجلد غير صالح.' };
+    }
+    const resp = await fetch(
+      `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}`,
+      { redirect: 'follow' }
+    );
+    if (!resp.ok) return { ok: false, error: `فشل جلب المجلد العام (${resp.status}).` };
+    const html = await resp.text();
+    const files = parseEmbeddedFolderView(html);
+    if (files.length === 0 && /need access|access denied|you need permission/i.test(html)) {
+      return { ok: false, error: 'هذا المجلد غير متاح كمجموعة عامة (تحقق من إعدادات المشاركة).' };
+    }
+    return { ok: true, files };
   } catch (err) {
     return { ok: false, error: err.message };
   }
 });
 
-ipcMain.handle('drive-folder:list', async (_event, folderKey) => {
+ipcMain.handle('drive-public:download', async (_event, fileId, fileName, folderPath) => {
   try {
-    const res = await backendClient.listFolder(folderKey);
-    return { ok: true, files: res.files || [], nextPageToken: res.nextPageToken || null };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-});
-
-ipcMain.handle('drive-folder:preview', async (_event, fileId) => {
-  try {
-    const { buffer, mimeType, name } = await backendClient.getContent(fileId, { disposition: 'inline', preview: true });
-    return { ok: true, base64: buffer.toString('base64'), mimeType, name };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-});
-
-ipcMain.handle('drive-folder:download', async (_event, fileId, folderPath) => {
-  try {
-    const { buffer, name } = await backendClient.getContent(fileId, { disposition: 'attachment' });
-    const safeName = path.basename(name || 'file').replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_') || 'file';
+    if (!fileId || typeof fileId !== 'string') {
+      return { ok: false, error: 'معرّف الملف غير صالح.' };
+    }
+    const resp = await fetch(
+      `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download`,
+      { redirect: 'follow' }
+    );
+    if (!resp.ok) return { ok: false, error: `فشل تنزيل الملف (${resp.status}).` };
+    const ctype = resp.headers.get('content-type') || '';
+    if (ctype.startsWith('text/html')) {
+      return { ok: false, needsBrowser: true };
+    }
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    if (buffer.length === 0) return { ok: false, error: 'الملف المحمَّل فارغ.' };
+    const safeName = path.basename(fileName || 'file').replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_') || 'file';
     const dir = (folderPath && typeof folderPath === 'string' && folderPath.trim())
       ? folderPath.trim()
       : app.getPath('downloads');
@@ -354,44 +392,6 @@ ipcMain.handle('drive-folder:download', async (_event, fileId, folderPath) => {
     fs.writeFileSync(tmpPath, buffer);
     fs.renameSync(tmpPath, filePath);
     return { ok: true, filePath, size: buffer.length };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-});
-
-ipcMain.handle('drive-folder:upload', async (_event, folderKey, uploadInfo) => {
-  try {
-    if (!uploadInfo || typeof uploadInfo !== 'object') {
-      return { ok: false, error: 'بيانات الرفع غير صالحة.' };
-    }
-    const buffer = Buffer.from(uploadInfo.base64 || '', 'base64');
-    if (buffer.length === 0) return { ok: false, error: 'الملف المراد رفعه فارغ.' };
-    const res = await backendClient.upload(folderKey, {
-      title: uploadInfo.title || '',
-      description: uploadInfo.description || '',
-      fileName: uploadInfo.fileName || 'ملف',
-      mimeType: uploadInfo.mimeType || 'application/octet-stream',
-      buffer,
-    });
-    return { ok: true, file: res.file };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-});
-
-ipcMain.handle('drive-folder:delete', async (_event, fileId) => {
-  try {
-    await backendClient.deleteFile(fileId);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-});
-
-ipcMain.handle('drive-folder:share', async (_event, fileId) => {
-  try {
-    const res = await backendClient.share(fileId);
-    return { ok: true, url: res.url };
   } catch (err) {
     return { ok: false, error: err.message };
   }

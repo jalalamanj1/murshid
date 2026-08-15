@@ -921,10 +921,6 @@ export default function App() {
           <DriveFolderView
             folderKey="letters"
             title="مخاطبات التربية"
-            subtitle="المخاطبات والتوجيهات الرسمية لمديرية التربية"
-            description="مجلد سحابي مشترك يحتوي المخاطبات الرسمية الصادرة عن المديرية العامة للتربية الخاصة بالمدارس والمرشدين التربويين."
-            readOnly
-            profile={profile}
           />
         );
 
@@ -933,9 +929,6 @@ export default function App() {
           <DriveFolderView
             folderKey="files"
             title="الملفات"
-            subtitle="الملفات المشتركة بين المرشدين التربويين"
-            description="مجلد سحابي مشترك لمشاركة الملفات بين المرشدين التربويين (مرفقات، تقارير، نماذج وقوالب عمل)."
-            profile={profile}
           />
         );
 

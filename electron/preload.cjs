@@ -29,18 +29,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDefaultBackupFolder: () => ipcRenderer.invoke('backup:get-default-folder'),
   saveLocalBackup: (folderPath, fileName, base64) => ipcRenderer.invoke('backup:write-local', folderPath, fileName, base64),
 
-  // ── Google Drive OAuth ───────────────────────────────────────────
+  // ── Google Drive OAuth (Online Backup only) ───────────────────────
   driveAuth: () => ipcRenderer.invoke('drive:auth'),
 
-  // ── Murshid Drive Folder (backed by the Murshid backend) ──────────
-  driveFolder: {
-    status: (profile) => ipcRenderer.invoke('drive-folder:status', profile),
-    list: (folderKey) => ipcRenderer.invoke('drive-folder:list', folderKey),
-    preview: (fileId) => ipcRenderer.invoke('drive-folder:preview', fileId),
-    download: (fileId, folderPath) => ipcRenderer.invoke('drive-folder:download', fileId, folderPath),
-    upload: (folderKey, uploadInfo) => ipcRenderer.invoke('drive-folder:upload', folderKey, uploadInfo),
-    delete: (fileId) => ipcRenderer.invoke('drive-folder:delete', fileId),
-    share: (fileId) => ipcRenderer.invoke('drive-folder:share', fileId),
+  // ── Public Google Drive Folders (no login, no OAuth) ──────────────
+  drivePublic: {
+    list: (folderId) => ipcRenderer.invoke('drive-public:list', folderId),
+    download: (fileId, fileName, folderPath) => ipcRenderer.invoke('drive-public:download', fileId, fileName, folderPath),
   },
 
   // ── Record Cover Service ─────────────────────────────────────────

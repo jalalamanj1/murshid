@@ -485,6 +485,7 @@ const { exportService } = require('./ExportService.cjs');
 
   ipcMain.handle('drive:auth', async () => {
     let server;
+    let authWindow;
     try {
       // Start a temporary HTTP server to catch the OAuth redirect.
       // The port is deterministic (3000) because the redirect URI must
@@ -510,38 +511,98 @@ const { exportService } = require('./ExportService.cjs');
       });
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${authParams.toString()}`;
 
-      // Log auth details
+      // Log auth details (client_id/redirect/scopes are public; the client
+      // secret is never logged).
       console.log('[Drive Auth] OAuth client type: Web Application (has client_secret)');
-      console.log('[Drive Auth] client_id:', CLIENT_ID);
       console.log('[Drive Auth] redirect_uri:', redirectUri);
       console.log('[Drive Auth] scopes:', OAUTH_SCOPES);
-      console.log('[Drive Auth] authorization URL:', authUrl);
 
-      // Open the auth URL in the default browser
-      await shell.openExternal(authUrl);
+      // Open the auth flow in a dedicated Electron window instead of the
+      // system browser. Google redirects back to http://localhost:3000/
+      // with ?code=... — we detect that callback here and close the window
+      // automatically, so the user is never left stuck on a localhost page.
+      authWindow = new BrowserWindow({
+        width: 520,
+        height: 680,
+        autoHideMenuBar: true,
+        title: 'تسجيل الدخول إلى Google',
+        backgroundColor: '#ffffff',
+        webPreferences: {
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+      });
+      authWindow.setMenu(null);
+      authWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
-      // Wait for the callback on the local server
-      const authCode = await new Promise((resolve, reject) => {
+      // Wait for the callback. It is observed from BOTH the auth window's
+      // navigation and the local server's request — whichever fires first
+      // settles the promise, and the other path is ignored.
+      const callbackPromise = new Promise((resolve, reject) => {
+        let done = false;
         const timeout = setTimeout(() => {
-          server.close();
-          reject(new Error('انتهت مهلة تسجيل الدخول إلى Google.'));
+          finish(false, new Error('انتهت مهلة تسجيل الدخول إلى Google.'));
         }, 120000); // 2-minute timeout
 
+        const finish = (ok, value) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timeout);
+          if (ok) resolve(value);
+          else reject(value);
+        };
+
+        const isCallbackUrl = (navUrl) => {
+          if (!navUrl) return false;
+          try {
+            return (url.parse(navUrl).host || '').toLowerCase() === `localhost:${OAUTH_PORT}`;
+          } catch {
+            return false;
+          }
+        };
+
+        const handleCallbackUrl = (navUrl) => {
+          if (!isCallbackUrl(navUrl)) return;
+          const parsed = url.parse(navUrl, true);
+          const code = parsed.query && parsed.query.code;
+          const error = parsed.query && parsed.query.error;
+          if (error) {
+            finish(false, new Error(`رفض Google الإذن: ${error}`));
+          } else if (code) {
+            finish(true, code);
+          }
+        };
+
+        authWindow.webContents.on('will-redirect', (_e, navUrl) => handleCallbackUrl(navUrl));
+        authWindow.webContents.on('did-redirect-navigation', (_e, navUrl) => handleCallbackUrl(navUrl));
+        authWindow.webContents.on('will-navigate', (_e, navUrl) => handleCallbackUrl(navUrl));
+        authWindow.webContents.on('did-navigate', (_e, navUrl) => handleCallbackUrl(navUrl));
+        authWindow.webContents.on('did-fail-load', (_e, errorCode) => {
+          // ERR_ABORTED (-3) fires when we close the window right after a
+          // successful callback — ignore it. Anything else is a real failure.
+          if (errorCode === -3) return;
+          finish(false, new Error('تعذر فتح صفحة تسجيل الدخول إلى Google.'));
+        });
+
+        // User closed the auth window manually → treat as cancellation.
+        authWindow.on('closed', () => {
+          finish(false, new Error('تم إغلاق نافذة تسجيل الدخول.'));
+        });
+
+        // Fallback: the local server also observes the callback.
         server.on('request', (req, res) => {
           const parsed = url.parse(req.url || '', true);
-          const code = parsed.query?.code;
-          const error = parsed.query?.error;
+          const code = parsed.query && parsed.query.code;
+          const error = parsed.query && parsed.query.error;
 
           if (code) {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end('<html><body dir="rtl"><h2>تم تسجيل الدخول بنجاح! يمكنك إغلاق هذه النافذة.</h2></body></html>');
-            clearTimeout(timeout);
-            resolve(code);
+            finish(true, code);
           } else if (error) {
             res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(`<html><body dir="rtl"><h2>خطأ في تسجيل الدخول: ${error}</h2></body></html>`);
-            clearTimeout(timeout);
-            reject(new Error(`رفض Google الإذن: ${error}`));
+            finish(false, new Error(`رفض Google الإذن: ${error}`));
           } else {
             res.writeHead(400, { 'Content-Type': 'text/plain' });
             res.end('Bad request');
@@ -549,8 +610,16 @@ const { exportService } = require('./ExportService.cjs');
         });
       });
 
-      // Close the server
-      server.close();
+      // Load the Google sign-in page. Not awaited: the callback promise
+      // drives completion so we can close the window the moment Google
+      // redirects back to the localhost callback.
+      authWindow.loadURL(authUrl).catch(() => {});
+
+      const authCode = await callbackPromise;
+
+      // Successful callback — close the OAuth window automatically.
+      if (authWindow && !authWindow.isDestroyed()) authWindow.destroy();
+      authWindow = null;
 
       // Exchange the auth code for tokens
       console.log('[Drive Auth] Exchanging code for tokens...');
@@ -600,9 +669,21 @@ const { exportService } = require('./ExportService.cjs');
         },
       };
     } catch (err) {
-      if (server) try { server.close(); } catch {}
       console.error('[Drive Auth] Error:', err.message);
       return { ok: false, error: err.message };
+    } finally {
+      if (server) try { server.close(); } catch {}
+      if (authWindow && !authWindow.isDestroyed()) {
+        authWindow.destroy();
+        authWindow = null;
+      }
+      // Restore/focus the main Murshid window so the user is always
+      // returned to the application after the OAuth flow ends.
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+      }
     }
   });
 // ── Update IPC ────────────────────────────────────────────────────

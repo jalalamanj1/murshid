@@ -14,7 +14,16 @@ import { env, pipeline } from '@huggingface/transformers';
 
 env.allowLocalModels = false; // always fetch from Hugging Face Hub (never a stale ./ copy)
 env.useBrowserCache = true; // cache downloaded model weights in the browser cache
-env.backends.onnx.wasm.wasmPaths = './ort/';
+
+// Serve the onnxruntime wasm + mjs glue through the app's murshid-res://
+// protocol (registered in electron/main.cjs). Chromium's fetch() cannot read
+// file:// URLs, so a plain ./ort/ path fails inside the packaged asar. The
+// object form makes transformers pre-load both files via fetch (blob URL + wasm
+// binary), which is exactly the path that works over a custom protocol.
+env.backends.onnx.wasm.wasmPaths = {
+  mjs: 'murshid-res://app/assets/ort/ort-wasm-simd-threaded.asyncify.mjs',
+  wasm: 'murshid-res://app/assets/ort/ort-wasm-simd-threaded.asyncify.wasm',
+};
 
 const MODEL_ID = 'Xenova/whisper-base'; // multilingual: Arabic + English
 
@@ -39,12 +48,12 @@ export function warmUpWhisper(): Promise<void> {
 
 /**
  * Transcribe a 16 kHz mono Float32Array into text.
- * Language is auto-detected (Arabic/English/mixed).
+ * The app is Arabic-only, so the language is pinned to Arabic.
  */
 export async function transcribeAudio(audio: Float32Array): Promise<string> {
   const transcriber = await getTranscriber();
   const out = await transcriber(audio, {
-    language: 'auto',
+    language: 'arabic',
     task: 'transcribe',
     chunk_length_s: 30,
     stride_length_s: 5,

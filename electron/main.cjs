@@ -1,10 +1,21 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const url = require('url');
 
 const isDev = !app.isPackaged;
+
+// Custom protocol that serves files from the bundled dist/ over fetch()-able
+// URLs. Chromium's fetch() rejects file:// URLs, which breaks onnxruntime-web
+// (Whisper) inside the packaged asar. murshid-res:// lets the renderer fetch
+// the .mjs/.wasm runtime binaries it needs.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'murshid-res',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true },
+  },
+]);
 
 // Keep Chromium and all native Electron surfaces in the application's light theme.
 nativeTheme.themeSource = 'light';
@@ -77,6 +88,38 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // ── Serve dist/ over murshid-res:// (fetchable wasm/mjs for Whisper) ──
+  const DIST_DIR = path.join(__dirname, '..', 'dist');
+  protocol.handle('murshid-res', (request) => {
+    try {
+      const u = new URL(request.url);
+      const rel = decodeURIComponent(u.pathname.replace(/^\/+/, ''));
+      const filePath = path.resolve(DIST_DIR, rel);
+      if (filePath !== DIST_DIR && !filePath.startsWith(DIST_DIR + path.sep)) {
+        return new Response('Forbidden', { status: 403 });
+      }
+      const ext = path.extname(filePath).toLowerCase();
+      const mime =
+        ext === '.wasm' ? 'application/wasm' :
+        ext === '.mjs' || ext === '.js' ? 'text/javascript' :
+        ext === '.json' ? 'application/json' :
+        ext === '.css' ? 'text/css' :
+        ext === '.ttf' ? 'font/ttf' :
+        ext === '.png' ? 'image/png' :
+        ext === '.ico' ? 'image/x-icon' :
+        'application/octet-stream';
+      return net.fetch(url.pathToFileURL(filePath).toString())
+        .then((r) => {
+          const headers = new Headers(r.headers);
+          headers.set('content-type', mime);
+          return new Response(r.body, { status: r.status, headers });
+        })
+        .catch(() => new Response('Not found', { status: 404 }));
+    } catch {
+      return new Response('Bad request', { status: 400 });
+    }
+  });
+
   // Allow microphone capture for the Voice Entry feature (Whisper runs in the
   // renderer, so getUserMedia must not be blocked by Electron's default policy).
   const { session } = require('electron');

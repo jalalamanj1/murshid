@@ -24,6 +24,7 @@
 const { app, ipcMain, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const DEFAULT_BASE_URL = 'https://opencode.ai/zen/go/v1';
 // Lowest-cost model on the Go plan ($0.14/$0.28 per 1M tokens, $60/mo cap,
@@ -31,6 +32,11 @@ const DEFAULT_BASE_URL = 'https://opencode.ai/zen/go/v1';
 // region-limited like the Muse Spark Contributor models.
 const DEFAULT_MODEL = 'mimo-v2.6-flash';
 const REQUEST_TIMEOUT_MS = 60000;
+
+// Stable per-app session id for the OpenCode Go gateway (required header). It
+// enables prompt caching (our system prompt is identical every call, so the
+// input cost drops to the cached-read rate) and correct usage routing.
+const OPENCODE_SESSION_ID = crypto.randomUUID();
 
 function configFile() {
   return path.join(app.getPath('userData'), 'ai-config.json');
@@ -188,6 +194,8 @@ async function chatCompletion(messages, { systemPrompt }) {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${cfg.apiKey}`,
+      'x-opencode-session': OPENCODE_SESSION_ID,
+      'User-Agent': 'Murshid/1.5.1',
     },
     body: JSON.stringify({
       model: cfg.model,

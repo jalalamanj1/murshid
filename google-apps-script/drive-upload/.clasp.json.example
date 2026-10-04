@@ -1,0 +1,9 @@
+{
+  "name": "murshid-drive-upload",
+  "description": "Anonymous upload endpoint for the Murshid Files Drive folder (no Google login required).",
+  "version": "1.0.0",
+  "private": true,
+  "access": "anyone",
+  "execution": "user",
+  "runtime": "V8"
+}

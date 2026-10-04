@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { CounselorProfile, LicenseInfo, Student, CounselingRecord, AppSettings, CaseStudy, CounselingSession, SpecialCaseRecord, HealthRecord, ParentLossRecord } from '../types';
+import { CounselorProfile, Student, CounselingRecord, AppSettings, CaseStudy, CounselingSession, SpecialCaseRecord, HealthRecord, ParentLossRecord } from '../types';
 
 const STORAGE_KEYS = {
-  LICENSE: 'murshid_license',
   PROFILE: 'murshid_profile',
   STUDENTS: 'murshid_students',
   RECORDS: 'murshid_records',
@@ -31,18 +30,9 @@ const DEFAULT_STUDENTS: Student[] = [];
 
 const DEFAULT_RECORDS: CounselingRecord[] = [];
 
-export const loadLicense = (): LicenseInfo => {
-  const data = localStorage.getItem(STORAGE_KEYS.LICENSE);
-  if (!data) return { isActivated: false };
-  try {
-    return JSON.parse(data);
-  } catch {
-    return { isActivated: false };
-  }
-};
-
-export const saveLicense = (license: LicenseInfo): void => {
-  localStorage.setItem(STORAGE_KEYS.LICENSE, JSON.stringify(license));
+export const purgeLegacyActivationData = (): void => {
+  localStorage.removeItem('murshid_license');
+  localStorage.removeItem('pandara_activation');
 };
 
 export const loadProfile = (): CounselorProfile => {
@@ -123,11 +113,11 @@ export const saveSettings = (settings: AppSettings): void => {
   localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
 };
 
-// ── Trial Edition ─────────────────────────────────────────────────────
+// ── Maintenance ───────────────────────────────────────────────────────
 
 // Reset Application to initial state (for testing / fresh installs)
 export const resetApplicationData = (): void => {
-  localStorage.removeItem(STORAGE_KEYS.LICENSE);
+  purgeLegacyActivationData();
   localStorage.removeItem(STORAGE_KEYS.PROFILE);
   localStorage.removeItem(STORAGE_KEYS.STUDENTS);
   localStorage.removeItem(STORAGE_KEYS.RECORDS);

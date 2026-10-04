@@ -8,7 +8,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('الاتصال بوحدة التخزين المحلية للبرنامج...');
   const [opacity, setOpacity] = useState(0);
-  const [appVersion, setAppVersion] = useState('1.2.5');
+  const [appVersion, setAppVersion] = useState('1.3.0');
 
   useEffect(() => {
     const electron = (window as any).electronAPI;
@@ -21,7 +21,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
     const fadeInTimer = setTimeout(() => setOpacity(1), 50);
 
     const intervals = [
-      { delay: 400, text: 'جاري فحص ترخيص التشغيل المحلي...' },
+      { delay: 400, text: 'جاري تجهيز بيئة العمل المحلية...' },
       { delay: 900, text: 'الاتصال بوحدة التخزين المحلية للبرنامج...' },
       { delay: 1400, text: 'جاري تحميل سجلات الطلاب وجلسات الإرشاد...' },
       { delay: 2000, text: 'جاري إعداد القوالب الرسمية ووزارة التربية العراقية...' },

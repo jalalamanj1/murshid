@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type AppFlowStage = 'SPLASH' | 'ACTIVATION' | 'REGISTRATION' | 'MAIN';
+export type AppFlowStage = 'SPLASH' | 'REGISTRATION' | 'MAIN';
 
 export type ActiveModule =
   | 'DASHBOARD'
@@ -14,13 +14,6 @@ export type ActiveModule =
   | 'DRIVE_LETTERS'
   | 'DRIVE_FILES'
   | 'SETTINGS';
-
-export interface LicenseInfo {
-  isActivated: boolean;
-  licenseType?: string;
-  activatedAt?: string;
-  activatedTo?: string;
-}
 
 export interface CounselorProfile {
   fullName: string;

@@ -17,46 +17,6 @@ const updateManager = require('./update-manager.cjs');
 // ── Application-wide Zoom ─────────────────────────────────────────────
 const zoom = require('./zoom.cjs');
 
-// ── Integrity Check ───────────────────────────────────────────────────
-const { verifyIntegrity, isBanned, banDevice, getHwid } = require('./integrity.cjs');
-
-/**
- * Show a blocking "Banned / Tampered" screen and exit.
- */
-function showBlockScreen(reason) {
-  const win = new BrowserWindow({
-    width: 600, height: 400,
-    resizable: false, closable: false,
-    frame: true, title: 'مرشد - خطأ',
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
-  });
-  win.setMenu(null);
-  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head><meta charset="UTF-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#0f172a;color:#f1f5f9;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;direction:rtl}
-.container{text-align:center;max-width:420px}
-.icon{font-size:64px;margin-bottom:16px}
-h1{font-size:20px;margin-bottom:8px}
-p{font-size:13px;color:#94a3b8;margin-bottom:20px;line-height:1.7}
-.error-box{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;font-size:11px;color:#f87171;margin-bottom:16px;text-align:right}
-.hwid{font-size:9px;color:#475569;word-break:break-all}
-</style></head>
-<body>
-<div class="container">
-<div class="icon">🚫</div>
-<h1>تم حظر هذا الجهاز</h1>
-<div class="error-box">${reason}</div>
-<p>للاستفسار، يرجى الاتصال بالدعم الفني:<br><bdi dir="ltr">0770 075 8915</bdi></p>
-<div class="hwid">HWID: ${getHwid()}</div>
-</div></body></html>`)}`);
-  win.on('closed', () => app.quit());
-  // Prevent any navigation away
-  win.on('will-navigate', (e) => e.preventDefault());
-}
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -74,6 +34,7 @@ function createWindow() {
     autoHideMenuBar: true,
     titleBarStyle: 'default',
     backgroundColor: '#0B0E15',
+    fullscreen: true,
     show: false,
   });
 
@@ -87,11 +48,22 @@ function createWindow() {
   // Application-wide zoom (Ctrl+Plus/Minus/0 and Ctrl+wheel)
   zoom.install(mainWindow);
 
-  // Always launch in fullscreen (maximized) mode.
-  mainWindow.maximize();
+  // Always launch in full screen mode (no title bar, no taskbar, no window
+  // chrome). Re-asserted once the window is ready so the state is applied even
+  // if it was lost while the window was still hidden.
+  mainWindow.setFullScreen(true);
 
   mainWindow.once('ready-to-show', () => {
+    if (!mainWindow.isDestroyed()) mainWindow.setFullScreen(true);
     mainWindow.show();
+  });
+
+  // F11 toggles full screen so the app can be left with window chrome back.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || input.key !== 'F11') return;
+    event.preventDefault();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.setFullScreen(!mainWindow.isFullScreen());
   });
 
 
@@ -102,14 +74,6 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // ── Integrity Check ────────────────────────────────────────────
-  const userDataPath = app.getPath('userData');
-  const integrityResult = await verifyIntegrity(userDataPath);
-  if (!integrityResult.valid) {
-    showBlockScreen(integrityResult.error || 'تم اكتشاف تلاعب بملفات البرنامج.');
-    return;
-  }
-
   // ── Update Check (production only) ─────────────────────────────
   if (!isDev) {
     try {
@@ -309,12 +273,21 @@ ipcMain.handle('backup:write-local', async (_event, folderPath, fileName, base64
 // Backup (drive:auth above).
 
 function decodeHtmlEntities(str) {
-  return String(str)
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  // Single pass so that already-escaped text (e.g. "&amp;#33;") is not decoded twice.
+  return String(str).replace(
+    /&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi,
+    (_match, entity) => {
+      const key = entity.toLowerCase();
+      if (key === 'amp') return '&';
+      if (key === 'lt') return '<';
+      if (key === 'gt') return '>';
+      if (key === 'quot') return '"';
+      if (key === 'apos') return "'";
+      if (key === 'nbsp') return '\u00a0';
+      if (key.startsWith('#x')) return String.fromCodePoint(parseInt(key.slice(2), 16));
+      return String.fromCharCode(Number(key.slice(1)));
+    }
+  );
 }
 
 function parseEmbeddedFolderView(html) {
@@ -402,6 +375,11 @@ ipcMain.handle('shell:openExternal', async (_event, url) => {
   await shell.openExternal(url);
 });
 
+// ── Telegram Public Channel Preview ──────────────────────────────────────
+// Reads the newest public post of a channel from Telegram's own public web
+// preview (https://t.me/s/<username>). No bot token, API id or secret is used
+// or stored here, and nothing about this handler is exposed to the network
+// beyond that single public preview URL.
 // ── Voice Service IPC ──────────────────────────────────────────────
 
 // ── Template Manager IPC ─────────────────────────────────────────────
@@ -465,6 +443,161 @@ const { exportService } = require('./ExportService.cjs');
       if (canceled || !filePath) return { ok: false, canceled: true };
       fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
       return { ok: true, filePath };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  // ── Anonymous Drive upload ────────────────────────────────────────
+  // Uploading to the public الملفات folder needs a credential holder, and the
+  // Drive REST API has no anonymous write. So uploads go through a Google Apps
+  // Script web app deployed as "Execute as: Me / Who has access: Anyone" —
+  // see google-apps-script/drive-upload/README.md for the one-time setup.
+  // Callers never see a Google login prompt.
+  //
+  // The endpoint is a bearer capability: anyone with the URL can upload.
+  // That is the intended behaviour. Request bodies stay under the ~50MB
+  // Apps Script ceiling (base64 inflates ~33%, hence the 20MB file cap).
+  const DRIVE_UPLOAD_ENDPOINT =
+    process.env.MURSHID_DRIVE_UPLOAD_URL || '';
+  const DRIVE_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+  const DRIVE_UPLOAD_TIMEOUT_MS = 120000;
+  // Extension allow-list, not a mime prefix match. A prefix check such as
+  // "application/" would happily accept application/x-msdownload, and this
+  // folder is world-readable — an uploaded .html/.svg/.exe served from a Google
+  // domain is a phishing and stored-XSS vector for whoever opens the link.
+  // Extension is the reliable signal anyway: Windows reports an empty type for
+  // many document formats, which would otherwise arrive as octet-stream.
+  const DRIVE_UPLOAD_ALLOWED_EXT = new Set([
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx',
+    'odt', 'ods', 'odp', 'rtf', 'txt',
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic',
+    'zip',
+  ]);
+  const DRIVE_UPLOAD_BLOCKED_MIME = new RegExp(
+    '^(text/html|application/xhtml|image/svg|application/(x-)?javascript' +
+    '|application/x-msdownload|application/x-msdos-program' +
+    '|application/vnd\\.microsoft\\.portable-executable|application/x-?(sh|shellscript)' +
+    '|application/x-?(executable|dosexec)|application/java-archive)$',
+    'i'
+  );
+  const driveUploadExt = (name) => {
+    const i = name.lastIndexOf('.');
+    return i > 0 ? name.slice(i + 1).toLowerCase() : '';
+  };
+
+  const isDriveUploadConfigured = () =>
+    typeof DRIVE_UPLOAD_ENDPOINT === 'string' &&
+    /^https:\/\/script\.google(usercontent)?\.com\/macros\/s\/[^\/]+\/exec\/?$/.test(
+      DRIVE_UPLOAD_ENDPOINT.trim()
+    );
+
+  ipcMain.handle('drive-public:upload-config', async () => {
+    if (!isDriveUploadConfigured()) {
+      return {
+        ok: false,
+        configured: false,
+        error: 'رفع الملفات غير مُعدّ بعد. يجب نشر خدمة الرفع على Google Apps Script.',
+      };
+    }
+    try {
+      const resp = await fetch(DRIVE_UPLOAD_ENDPOINT, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20000),
+      });
+      const body = await resp.json().catch(() => null);
+      if (!resp.ok || !body?.ok) {
+        return { ok: false, configured: false, error: `تعذر الوصول لخدمة الرفع (${resp.status}).` };
+      }
+      return {
+        ok: true,
+        configured: true,
+        maxBytes: typeof body.maxBytes === 'number' ? body.maxBytes : DRIVE_UPLOAD_MAX_BYTES,
+      };
+    } catch (err) {
+      return { ok: false, configured: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('drive-public:upload', async (_event, payload) => {
+    try {
+      if (!isDriveUploadConfigured()) {
+        return {
+          ok: false,
+          error: 'رفع الملفات غير مُعدّ بعد. يجب نشر خدمة الرفع على Google Apps Script.',
+        };
+      }
+      if (!payload || typeof payload !== 'object') {
+        return { ok: false, error: 'بيانات الرفع غير صالحة.' };
+      }
+
+      const uploaderName = String(payload.uploaderName || '').trim();
+      if (!uploaderName) {
+        return { ok: false, error: 'يرجى إدخال اسم الرافع.' };
+      }
+      if (uploaderName.length > 80) {
+        return { ok: false, error: 'اسم الرافع طويل جداً.' };
+      }
+
+      const fileName = String(payload.fileName || '').trim();
+      if (!fileName || fileName.length > 200) {
+        return { ok: false, error: 'اسم الملف غير صالح.' };
+      }
+
+      const mimeType = String(payload.mimeType || 'application/octet-stream');
+      const ext = driveUploadExt(fileName);
+      if (!DRIVE_UPLOAD_ALLOWED_EXT.has(ext)) {
+        return { ok: false, error: `نوع الملف غير مدعوم${ext ? ` (.${ext})` : ''}.` };
+      }
+      if (DRIVE_UPLOAD_BLOCKED_MIME.test(mimeType)) {
+        return { ok: false, error: `نوع الملف غير مدعوم (${mimeType}).` };
+      }
+
+      const dataBase64 = String(payload.dataBase64 || '');
+      if (!dataBase64) return { ok: false, error: 'ملف فارغ.' };
+
+      // base64 -> bytes, validated against the real decoded length.
+      let bytes;
+      try {
+        bytes = Buffer.from(dataBase64, 'base64');
+      } catch {
+        return { ok: false, error: 'تعذر قراءة محتوى الملف.' };
+      }
+      if (bytes.length === 0) return { ok: false, error: 'الملف فارغ.' };
+      if (bytes.length > DRIVE_UPLOAD_MAX_BYTES) {
+        return {
+          ok: false,
+          error: `حجم الملف يتجاوز ${Math.floor(DRIVE_UPLOAD_MAX_BYTES / 1048576)} ميغابايت.`,
+        };
+      }
+
+      const resp = await fetch(DRIVE_UPLOAD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName,
+          mimeType,
+          dataBase64,
+          uploaderName,
+          title: String(payload.title || ''),
+          description: String(payload.description || ''),
+          key: String(payload.key || ''),
+        }),
+        redirect: 'follow',
+        signal: AbortSignal.timeout(DRIVE_UPLOAD_TIMEOUT_MS),
+      });
+
+      const body = await resp.json().catch(() => null);
+      if (!resp.ok || !body?.ok) {
+        return {
+          ok: false,
+          error: body?.error
+            ? `فشل الرفع: ${body.error}`
+            : `فشل الرفع (${resp.status}).`,
+        };
+      }
+      return { ok: true, id: body.id, name: body.name, size: body.size };
     } catch (err) {
       return { ok: false, error: err.message };
     }
@@ -706,6 +839,46 @@ ipcMain.handle('update:install', async () => {
 });
 
 ipcMain.handle('app:version', () => app.getVersion());
+
+/**
+ * Window controls for the custom header buttons. The app starts full screen, so
+ * these are the only affordances for minimizing or quitting it.
+ */
+ipcMain.handle('window:minimize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
+});
+
+ipcMain.handle('window:close', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+});
+
+/**
+ * Read-only reader for a Telegram PUBLIC channel web page.
+ *
+ * Runs here in the main process, not in the renderer, so no CORS workaround,
+ * no scraping in the page, and no credentials are involved — this is not the
+ * Bot API. A short TTL cache absorbs repeated visibility refreshes without
+ * tightening the renderer's own polling interval.
+ */
+const publicChannel = require('./telegram-public-channel.cjs');
+const PUBLIC_CHANNEL_TTL_MS = 10000;
+const publicChannelCache = new Map();
+
+ipcMain.handle('telegram:public-channel', async (_event, username) => {
+  const key = String(username || '').trim().toLowerCase();
+  const cached = publicChannelCache.get(key);
+  if (cached && Date.now() - cached.at < PUBLIC_CHANNEL_TTL_MS) return cached.snapshot;
+
+  try {
+    const snapshot = await publicChannel.readPublicChannel(username);
+    publicChannelCache.set(key, { at: Date.now(), snapshot });
+    return snapshot;
+  } catch (err) {
+    // Surface the reason to the renderer so it can show an honest failure
+    // state instead of silently presenting an old snapshot as current.
+    return { channel: key, source: null, fetchedAt: null, posts: [], error: err.message };
+  }
+});
 
 const sessionManager = require('./session-manager.cjs');
 

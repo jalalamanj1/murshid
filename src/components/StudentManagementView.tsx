@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search, Plus, Trash2, Edit, FileText, Users, Upload, ChevronLeft,
-  ArrowUpDown, Eye, UserPlus, AlertCircle, CheckCircle, X, RefreshCw, Filter,
+  ArrowUpDown, Eye, UserPlus, AlertCircle, CheckCircle, X, Filter,
   Download, FileSpreadsheet, MapPin, ArrowRight, Sparkles
 } from 'lucide-react';
 import { Student, CounselorProfile, CounselingRecord } from '../types';
@@ -30,7 +30,6 @@ interface StudentManagementViewProps {
   onImportStudents?: (students: Student[]) => void;
   onUpdateStudent: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
-  onResetData?: () => void;
   onOpenRecords?: () => void;
 }
 
@@ -38,7 +37,7 @@ type SortField = 'fullName' | 'classGrade' | 'birthDate' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 export default function StudentManagementView({
-  students, records, profile, onAddStudent, onImportStudents, onUpdateStudent, onDeleteStudent, onResetData, onOpenRecords
+  students, records, profile, onAddStudent, onImportStudents, onUpdateStudent, onDeleteStudent, onOpenRecords
 }: StudentManagementViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('fullName');
@@ -329,19 +328,6 @@ export default function StudentManagementView({
         <div className="flex gap-2 flex-wrap">
           <input type="file" ref={fileInputRef} className="hidden" />
           <button onClick={() => setShowImportWizard(true)} className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 text-xs font-black py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"><FileSpreadsheet className="w-4 h-4" />استيراد من Excel</button>
-          <button
-            onClick={() => {
-              if (!onResetData) return;
-              if (confirm('هل أنت متأكد من رغبتك في حذف الطلاب والحالات الافتراضية؟ (سيتم تصفير إحصائيات الطلاب والحالات المفتوحة في لوحة التحكم، مع الاحتفاظ بسجلات النشاط اليومي)')) {
-                onResetData();
-                alert('تمت تهيئة البيانات بنجاح وتصفير الطلاب والحالات الافتراضية.');
-              }
-            }}
-            className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-xs font-black py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Reset Data</span>
-          </button>
           <button onClick={handleExportExcel} disabled={filteredStudents.length === 0} className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 text-office-blue dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 text-xs font-black py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40"><Download className="w-4 h-4" />تصدير إلى Excel</button>
           <button onClick={() => { resetForm(); setEditingStudent(null); setShowAddDialog(true); }} className="bg-office-blue hover:bg-office-hover text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"><UserPlus className="w-4 h-4" />تسجيل طالب جديد</button>
         </div>

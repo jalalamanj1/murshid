@@ -51,9 +51,8 @@ import {
   publicShareUrl,
   isPreviewable,
   downloadPublicFile,
-  getDriveAccessToken,
-  connectDriveAccount,
   uploadSharedFile,
+  getUploadServiceStatus,
   listOwnUploads,
   deleteSharedFile,
   timeAgo,
@@ -137,6 +136,7 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadUploaderName, setUploaderName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -185,6 +185,31 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folderKey]);
+
+  // Anonymous upload availability. Checked once per folder so an undeployed
+  // Apps Script surfaces a clear message rather than a raw upload failure.
+  const [uploadService, setUploadService] = useState<{ ready: boolean; note: string } | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!isFilesTab) {
+      setUploadService(null);
+      return;
+    }
+    getUploadServiceStatus()
+      .then(s => {
+        if (cancelled) return;
+        setUploadService(
+          s.configured
+            ? { ready: true, note: 'الرفع متاح بدون تسجيل دخول إلى Google.' }
+            : { ready: false, note: s.error || 'خدمة الرفع غير مُعدّة.' }
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setUploadService({ ready: false, note: 'تعذر التحقق من خدمة الرفع.' });
+      });
+    return () => { cancelled = true; };
+  }, [isFilesTab, folderKey]);
 
   // ── Preview ────────────────────────────────────────────────────────
   const [previewImgFailed, setPreviewImgFailed] = useState(false);
@@ -238,19 +263,10 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
     return age >= 0 && age <= OWN_DELETE_WINDOW_MS;
   };
 
-  const openUploadPicker = async () => {
+  const openUploadPicker = () => {
     if (!isFilesTab) return;
     setError('');
-    try {
-      // Uploading needs the same Google login as Online Backup.
-      const token = await getDriveAccessToken();
-      if (!token) {
-        await connectDriveAccount();
-      }
-      fileInputRef.current?.click();
-    } catch (err: any) {
-      addToast('error', err.message || 'تعذر الاتصال بحساب Google.');
-    }
+    fileInputRef.current?.click();
   };
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,6 +275,7 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
     setUploadFile(f);
     setUploadTitle(f.name.replace(/\.[^.]+$/, ''));
     setUploadDescription('');
+    setUploaderName(loadProfile()?.fullName || '');
     setShowUploadModal(true);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -269,17 +286,14 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
       addToast('warning', 'يرجى إدخال عنوان الملف.');
       return;
     }
+    if (!uploadUploaderName.trim()) {
+      addToast('warning', 'يرجى إدخال اسم الرافع.');
+      return;
+    }
     setUploading(true);
     setError('');
     try {
-      const profile = loadProfile();
-      await uploadSharedFile(
-        uploadFile,
-        uploadTitle,
-        uploadDescription,
-        profile?.fullName || 'مستخدم',
-        DRIVE_FOLDERS.files
-      );
+      await uploadSharedFile(uploadFile, uploadTitle, uploadDescription, uploadUploaderName);
       setShowUploadModal(false);
       setUploadFile(null);
       setUploadTitle('');
@@ -392,7 +406,9 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
         {isFilesTab && (
           <button
             onClick={openUploadPicker}
-            className="bg-office-blue hover:bg-office-hover text-white px-3 py-2 text-[11px] font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+            disabled={uploadService?.ready === false}
+            title={uploadService?.note || 'رفع ملف إلى مجلد الملفات'}
+            className="bg-office-blue hover:bg-office-hover disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 text-[11px] font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
             <Upload className="w-3.5 h-3.5" />
             <span>رفع ملف</span>
@@ -580,13 +596,26 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  اسم الرافع <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  value={uploadUploaderName}
+                  onChange={e => setUploaderName(e.target.value)}
+                  placeholder="أدخل اسمك..."
+                  autoFocus
+                  maxLength={80}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-office-blue"
+                />
+                <p className="text-[10px] text-slate-400">سيظهر اسمك ضمن اسم الملف على Google Drive ليعرف الجميع من أرسله.</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
                   عنوان الملف <span className="text-rose-500">*</span>
                 </label>
                 <input
                   value={uploadTitle}
                   onChange={e => setUploadTitle(e.target.value)}
                   placeholder="أدخل عنوان الملف..."
-                  autoFocus
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-office-blue"
                 />
               </div>
@@ -612,7 +641,7 @@ export default function DriveFolderView({ folderKey, title }: DriveFolderViewPro
               </button>
               <button
                 onClick={handleUploadSubmit}
-                disabled={uploading || !uploadTitle.trim()}
+                disabled={uploading || !uploadTitle.trim() || !uploadUploaderName.trim()}
                 className="flex-1 bg-office-blue hover:bg-office-hover text-white py-2.5 text-[11px] font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
                 {uploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

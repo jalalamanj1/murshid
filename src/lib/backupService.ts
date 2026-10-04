@@ -17,7 +17,6 @@ import {
   GeneratedDocument,
   StudentAttachment,
   CounselorProfile,
-  LicenseInfo,
   AppSettings,
 } from '../types';
 
@@ -27,7 +26,6 @@ const GOOGLE_DRIVE_KEY = 'murshid_google_drive';
 
 // ── All localStorage keys we back up ────────────────────────────────
 const DATA_KEYS = {
-  license: 'murshid_license',
   profile: 'murshid_profile',
   students: 'murshid_students',
   records: 'murshid_records',
@@ -144,7 +142,6 @@ function collectLocalStorageData(settings: BackupSettings): Record<string, strin
   data['database/students.json'] = localStorage.getItem(DATA_KEYS.students) || '[]';
   data['database/records.json'] = localStorage.getItem(DATA_KEYS.records) || '[]';
   data['database/profile.json'] = localStorage.getItem(DATA_KEYS.profile) || '{}';
-  data['database/license.json'] = localStorage.getItem(DATA_KEYS.license) || '{}';
 
   if (settings.includeSettings) {
     data['settings/app_settings.json'] = localStorage.getItem(DATA_KEYS.settings) || '{}';
@@ -360,7 +357,6 @@ export async function restoreFromFile(
     ['database/students.json', DATA_KEYS.students],
     ['database/records.json', DATA_KEYS.records],
     ['database/profile.json', DATA_KEYS.profile],
-    ['database/license.json', DATA_KEYS.license],
     ['settings/app_settings.json', DATA_KEYS.settings],
     ['settings/backup_settings.json', BACKUP_SETTINGS_KEY],
     ['templates/word_templates.json', DATA_KEYS.templates],
@@ -436,7 +432,6 @@ export async function restoreFromBuffer(
     ['database/students.json', DATA_KEYS.students],
     ['database/records.json', DATA_KEYS.records],
     ['database/profile.json', DATA_KEYS.profile],
-    ['database/license.json', DATA_KEYS.license],
     ['settings/app_settings.json', DATA_KEYS.settings],
     ['settings/backup_settings.json', BACKUP_SETTINGS_KEY],
     ['templates/word_templates.json', DATA_KEYS.templates],

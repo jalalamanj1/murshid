@@ -5,8 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  loadLicense, 
-  saveLicense,
+  purgeLegacyActivationData,
   loadProfile, 
   loadStudents, 
   loadRecords, 
@@ -31,7 +30,6 @@ import {
 import { 
   AppFlowStage, 
   ActiveModule, 
-  LicenseInfo, 
   CounselorProfile, 
   Student, 
   CounselingRecord,
@@ -46,7 +44,6 @@ import {
 
 // Components
 import SplashView from './components/SplashView';
-import ActivationView from './components/ActivationView';
 import RegistrationView from './components/RegistrationView';
 import DesktopWindow from './components/DesktopWindow';
 import DashboardView from './components/DashboardView';
@@ -69,7 +66,6 @@ import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
 import RecordCoversView from './components/RecordCoversView';
 import ExportSection from './components/ExportSection';
 import UpdateSettingsView from './components/UpdateSettingsView';
-import { loadCache, validateAsync, deleteCache as deleteActivationCache } from './lib/pandaraActivation';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
 
 import { 
@@ -77,7 +73,6 @@ import {
   FileBox, 
   FileText, 
   Sliders, 
-  Database, 
   Paperclip, 
   HelpCircle, 
   AlertCircle,
@@ -90,7 +85,6 @@ export default function App() {
   const [activeModule, setActiveModule] = useState<ActiveModule>('DASHBOARD');
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
-  const [license, setLicense] = useState<LicenseInfo>({ isActivated: false });
   const [appVersion, setAppVersion] = useState('1.2.5');
   const [profile, setProfile] = useState<CounselorProfile>({
     fullName: '',
@@ -122,8 +116,6 @@ export default function App() {
   const [parentLossMode, setParentLossMode] = useState<'LIST' | 'CREATE' | 'EDIT'>('LIST');
   const [editingParentLoss, setEditingParentLoss] = useState<ParentLossRecord | undefined>();
   
-  const [gdriveConnected, setGdriveConnected] = useState(false);
-  const [gdriveEmail, setGdriveEmail] = useState('');
   const [saveFolder, setSaveFolder] = useState(() => {
     return localStorage.getItem('murshid_save_folder') || '';
   });
@@ -149,72 +141,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    const raw = localStorage.getItem('murshid_google_drive');
-    if (raw) {
-      try {
-        const account = JSON.parse(raw);
-        setGdriveConnected(!!account?.tokens?.access_token);
-        setGdriveEmail(account?.email || account?.tokens?.email || '');
-      } catch {}
-    }
-  }, []);
-
-  useEffect(() => {
     const electron = (window as any).electronAPI;
     if (electron?.getAppVersion) {
       electron.getAppVersion().then(setAppVersion).catch(() => {});
     }
   }, []);
 
-  const handleGDriveConnect = async () => {
-    try {
-      const electron = (window as any).electronAPI;
-      if (!electron?.driveAuth) return;
-      const res = await electron.driveAuth();
-      if (res.ok) {
-        // Save to backup service key (Online Backup module)
-        const backupAccount = { connected: true, email: res.tokens.email || '', tokens: res.tokens, folderId: undefined };
-        localStorage.setItem('murshid_google_drive', JSON.stringify(backupAccount));
-        setGdriveConnected(true);
-        setGdriveEmail(res.tokens.email || '');
-      } else {
-        alert(res.error || 'فشل الاتصال');
-      }
-    } catch (err: any) {
-      alert(err.message || 'خطأ في الاتصال');
-    }
-  };
-
-  const handleGDriveDisconnect = () => {
-    localStorage.removeItem('murshid_google_drive');
-    setGdriveConnected(false);
-    setGdriveEmail('');
-  };
-
-  // Check if license is expired — clears activation so user hits the activation screen
-  const checkExpiration = () => {
-    const lic = loadLicense();
-    if (!lic.isActivated) return;
-    // Load the cache to check expiresAt
-    const raw = localStorage.getItem('pandara_activation');
-    if (!raw) return;
-    try {
-      const cache = JSON.parse(raw);
-      if (cache.expiresAt && new Date(cache.expiresAt).getTime() < Date.now()) {
-        localStorage.removeItem('pandara_activation');
-        const expired: LicenseInfo = { isActivated: false };
-        saveLicense(expired);
-        setLicense(expired);
-        setFlowStage('ACTIVATION');
-      }
-    } catch {}
-  };
-
   // Load configuration on mount
   useEffect(() => {
-    const activeLicense = loadLicense();
+    purgeLegacyActivationData();
+
     const activeProfile = loadProfile();
-    setLicense(activeLicense);
     setProfile(activeProfile);
     setStudents(loadStudents());
     setRecords(loadRecords());
@@ -223,12 +160,6 @@ export default function App() {
     setSpecialCases(loadSpecialCases());
     setHealthRecords(loadHealthRecords());
     setParentLossRecords(loadParentLossRecords());
-
-    // Check for expired trial on every mount
-    checkExpiration();
-
-    // Periodic expiration check every 15 seconds while app is open
-    const timer = setInterval(checkExpiration, 15000);
 
     // Initialize AI context with user and app info
     try {
@@ -246,44 +177,9 @@ export default function App() {
         e.updateAppContext({ currentModule: 'DASHBOARD', currentPage: 'الرئيسية ولوحة التحكم' });
       }
     } catch {}
-
-    return () => clearInterval(timer);
   }, []);
 
-  // Periodic trial expiry check (every 30 seconds while in MAIN mode)
-  useEffect(() => {
-    if (flowStage !== 'MAIN') return;
-    const interval = setInterval(async () => {
-      const validation = await validateAsync();
-      if (!validation.isValid) {
-        setLicense({ isActivated: false });
-        setFlowStage('ACTIVATION');
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [flowStage]);
-
-  const handleSplashComplete = async () => {
-    // Validate cache for trial expiry
-    const validation = await validateAsync();
-    if (!validation.isValid) {
-      // Cache expired or invalid — clear license
-      setLicense({ isActivated: false });
-      setFlowStage('ACTIVATION');
-      return;
-    }
-
-    if (!license.isActivated) {
-      setFlowStage('ACTIVATION');
-    } else if (!profile.isRegistered) {
-      setFlowStage('REGISTRATION');
-    } else {
-      setFlowStage('MAIN');
-    }
-  };
-
-  const handleActivated = (lic: LicenseInfo) => {
-    setLicense(lic);
+  const handleSplashComplete = () => {
     if (!profile.isRegistered) {
       setFlowStage('REGISTRATION');
     } else {
@@ -393,7 +289,7 @@ export default function App() {
             profile={profile} 
             students={students} 
             records={records} 
-            onNavigate={(mod) => setActiveModule(mod as ActiveModule)}
+            onNavigate={handleNavigate}
             onQuickAddStudent={() => setActiveModule('STUDENTS')}
             onQuickAddRecord={() => setActiveModule('RECORDS')}
             onAddRecord={(newRecord) => {
@@ -458,7 +354,6 @@ export default function App() {
               });
             }}
             onDeleteStudent={handleDeleteStudent}
-            onResetData={handleClearStudentsAndCases}
             onOpenRecords={() => setActiveModule('RECORDS')}
           />
         );
@@ -867,49 +762,51 @@ export default function App() {
         }
 
         return (
-          <div className="card animate-fade-in">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="space-y-1">
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">السجلات الارشادية</h3>
-                <p className="text-xs text-slate-400 dark:text-slate-400">إدارة الحالات وتوثيق الاستشارات بالتطابق مع السجلات التسعة المعتمدة رسمياً في وزارة التربية.</p>
+          <div className="space-y-6">
+            <div className="card animate-fade-in">
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">سجلات</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { type: 'HEALTH_STATUS', name: 'سجل الحالة الصحية' },
+                  { type: 'SPECIAL_CASES', name: 'سجل الحالات الخاصة' },
+                  { type: 'GROUP_INDIVIDUAL', name: 'سجل الإرشاد الجمعي والفردي' },
+                  { type: 'BEREAVED_STUDENTS', name: 'سجل الطلبة الفاقدين (أحد الوالدين أو كليهما)' },
+                  { type: 'CASE_STUDY', name: 'سجل دراسة الحالة' },
+                  { type: 'HEALTH_KEY_GUIDE', name: 'سجل الدليل (المفتاح) لدراسة الحالة' },
+                  { type: 'DAILY_ACTIVITY_PLAN', name: 'سجل النشاط اليومي' }
+                ].map((item) => {
+                  return (
+                    <div 
+                      key={item.type} 
+                      onClick={() => setSelectedRecordType(item.type as RecordType)}
+                      className="border border-slate-200 dark:border-slate-800 hover:border-office-blue/30 dark:hover:border-office-blue/40 p-3 rounded-xl bg-[#F8F6F0] dark:bg-[#F8F6F0] flex flex-col justify-between gap-2 min-h-[100px] transition-all hover:shadow-xs cursor-pointer group"
+                    >
+                      <span className="text-xs font-black text-main dark:text-slate-100 group-hover:text-office-blue transition-colors leading-snug">{item.name}</span>
+                      <button 
+                        className="text-[10px] font-black text-office-blue dark:text-blue-400 group-hover:underline text-right cursor-pointer flex items-center justify-end gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRecordType(item.type as RecordType);
+                        }}
+                      >
+                        <span>فتح السجل وإدارته</span>
+                        <span>←</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { type: 'HEALTH_STATUS', name: 'سجل الحالة الصحية', desc: 'رصد وتوثيق الحالات الصحية والأمراض المزمنة للطلاب ومتابعة العلاج المدرسي.' },
-                { type: 'SPECIAL_CASES', name: 'سجل الحالات الخاصة', desc: 'متابعة شؤون الطلاب من ذوي الاحتياجات الخاصة أو الحالات الاجتماعية والمعيشية الحرجة.' },
-                { type: 'GROUP_INDIVIDUAL', name: 'سجل الإرشاد الجمعي والفردي', desc: 'توثيق جلسات الدعم والاستشارات الفردية والجماعية للطلاب لتحسين التكيف والتحصيل.' },
-                { type: 'BEREAVED_STUDENTS', name: 'سجل الطلبة الفاقدين (أحد الوالدين أو كليهما)', desc: 'رعاية شؤون الطلاب الأيتام وفاقدي المعيل وتقديم الدعم النفسي والاجتماعي والمالي لهم.' },
-                { type: 'CASE_STUDY', name: 'سجل دراسة الحالة', desc: 'دراسة معمقة وبحث تفصيلي متكامل للحالات المستعصية والسلوكيات المعقدة للطلاب.' },
-                { type: 'HEALTH_KEY_GUIDE', name: 'سجل الدليل (المفتاح) لدراسة الحالة' },
-                { type: 'DAILY_ACTIVITY_PLAN', name: 'سجل النشاط اليومي', desc: 'توزيع وتنظيم خطة النشاط الإرشادي السنوي والشهري وتدوين اليوميات التنفيذية للعمل.' }
-              ].map((item) => {
-                return (
-                  <div 
-                    key={item.type} 
-                    onClick={() => setSelectedRecordType(item.type as RecordType)}
-                    className="border border-slate-200 dark:border-slate-800 hover:border-office-blue/30 dark:hover:border-office-blue/40 p-4 rounded-xl bg-[#F8F6F0] dark:bg-[#F8F6F0] flex flex-col justify-between h-36 transition-all hover:shadow-xs cursor-pointer group"
-                  >
-                    <div>
-                      <div>
-                        <span className="text-xs font-black text-main dark:text-slate-100 group-hover:text-office-blue transition-colors">{item.name}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2.5 leading-relaxed">{item.desc}</p>
-                    </div>
-                    <button 
-                      className="text-[10px] font-black text-office-blue dark:text-blue-400 group-hover:underline text-right mt-3 cursor-pointer flex items-center justify-end gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedRecordType(item.type as RecordType);
-                      }}
-                    >
-                      <span>فتح السجل وإدارته</span>
-                      <span>←</span>
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="card animate-fade-in">
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">سجلات إضافية</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" />
             </div>
           </div>
         );
@@ -999,27 +896,6 @@ export default function App() {
 
               <UpdateSettingsView />
 
-              <div className="space-y-3 max-w-lg">
-                <h4 className="text-xs font-bold text-main">Google Drive</h4>
-                <div className="bg-card rounded-xl p-4 border border-border-color flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${gdriveConnected ? 'bg-emerald-50 text-success' : 'bg-[#FAFAFA] text-muted border border-border-color'}`}>
-                      <Database className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-main">الاتصال السحابي</p>
-                      <p className="text-[10px] text-muted">{gdriveConnected ? gdriveEmail || 'متصل' : 'غير متصل'}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={gdriveConnected ? handleGDriveDisconnect : handleGDriveConnect}
-                    className={gdriveConnected ? 'btn-danger !py-1.5 !px-4 text-[11px]' : 'btn-primary !py-1.5 !px-4 text-[11px]'}
-                  >
-                    {gdriveConnected ? 'قطع الاتصال' : 'اتصال'}
-                  </button>
-                </div>
-              </div>
-
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-main">حول النظام</h4>
                 <div className="bg-card rounded-xl p-5 border border-border-color">
@@ -1058,10 +934,6 @@ export default function App() {
   // Flow Stage Routing
   if (flowStage === 'SPLASH') {
     return <SplashView onComplete={handleSplashComplete} />;
-  }
-
-  if (flowStage === 'ACTIVATION') {
-    return <ActivationView onActivated={handleActivated} />;
   }
 
   if (flowStage === 'REGISTRATION') {
@@ -1107,10 +979,8 @@ export default function App() {
   return (
     <>
       <DesktopWindow 
-        profile={profile} 
         activeModule={activeModule} 
         onNavigate={handleNavigate}
-
       >
         {renderActiveModuleContent()}
       </DesktopWindow>

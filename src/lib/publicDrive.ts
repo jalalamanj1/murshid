@@ -122,19 +122,21 @@ export async function downloadPublicFile(file: PublicDriveFile, folderPath: stri
 
 // ── Upload / delete for the shared files folder ──────────────────────
 //
-// Uploading to the ملفات folder and deleting your own recent uploads
-// requires the SAME Google login as Online Backup (drive.file scope only
-// — the OAuth scopes are unchanged; no drive.readonly, no spreadsheets).
-// Listing stays public / login-free. Own-upload deletion is enforced by
-// the app: only files this account uploaded via this app (marked with
-// appProperties) and younger than 1 hour are deletable. The owner's
-// existing files carry no such marker and can never be deleted.
+// Uploading is anonymous: no Google login, no OAuth, no token. The Drive REST
+// API has no anonymous write, so the file is POSTed from the Electron main
+// process to a Google Apps Script web app that runs with the folder owner's
+// authority (see google-apps-script/drive-upload/). The uploader's name is
+// required and the endpoint records it in the resulting file name, which is
+// the only field a login-free folder listing can display.
+//
+// Deleting your own recent uploads still needs a Drive token (drive.file
+// scope), so that path stays authenticated and is only reachable when an
+// account was linked by an earlier version of the app.
 
 const GDRIVE_STORAGE = 'murshid_google_drive';
 const CLIENT_ID = '580475588026-196m9aepjuhh325nkaffdchrlqnqb5ul.apps.googleusercontent.com';
 const CLIENT_SECRET = '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';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
-const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export interface OwnUpload {
@@ -200,69 +202,76 @@ export async function getDriveAccessToken(): Promise<string | null> {
 }
 
 /**
- * Connect to Google with the SAME OAuth flow/scopes as Online Backup.
- * The tokens are stored under the same key so one login serves both.
+ * Whether the anonymous upload service is deployed and reachable.
+ * `maxBytes` comes from the service so the UI cap follows the server.
  */
-export async function connectDriveAccount(): Promise<void> {
+export interface UploadServiceStatus {
+  configured: boolean;
+  maxBytes?: number;
+  error?: string;
+}
+
+export async function getUploadServiceStatus(): Promise<UploadServiceStatus> {
   const electron = (window as any).electronAPI;
-  if (!electron?.driveAuth) throw new Error('بيئة سطح المكتب غير متوفرة.');
-  const res = await electron.driveAuth();
-  if (!res?.ok) throw new Error(res?.error || 'فشل تسجيل الدخول إلى Google.');
-  const t = res.tokens || {};
-  writeTokens({
-    access_token: t.access_token,
-    refresh_token: t.refresh_token || '',
-    expires_in: t.expires_in || 3600,
-    expiry_date: Date.now() + (t.expires_in || 3600) * 1000,
-    email: t.email || '',
-    name: t.name || '',
+  if (!electron?.drivePublic?.uploadConfig) {
+    return { configured: false, error: 'بيئة سطح المكتب غير متوفرة.' };
+  }
+  const res = await electron.drivePublic.uploadConfig();
+  return {
+    configured: !!res?.ok,
+    maxBytes: res?.maxBytes,
+    error: res?.error,
+  };
+}
+
+/** Read a File into base64 without blowing the call stack on large files. */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('تعذر قراءة الملف.'));
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.readAsDataURL(file);
   });
 }
 
 /**
- * Upload a file into the shared files folder with the given title and
- * optional description. The uploader's registration name and the upload
- * time are recorded in the file's appProperties so the same account can
- * delete its own recent uploads later. Title is required.
+ * Upload a file into the shared files folder with no Google login.
+ * Title and uploader name are both required. The endpoint renames the file to
+ * "YYYY-MM-DD - uploader - title.ext" so the uploader is visible to everyone
+ * browsing the folder without a Drive account.
  */
 export async function uploadSharedFile(
   file: File,
   title: string,
   description: string,
-  uploaderName: string,
-  folderId: string
-): Promise<void> {
-  const token = await getDriveAccessToken();
-  if (!token) throw new Error('يرجى تسجيل الدخول إلى Google أولاً.');
-
-  const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : '';
-  const titleClean = title.trim();
-  const name = titleClean.toLowerCase().endsWith(ext.toLowerCase()) ? titleClean : titleClean + ext;
-
-  const metadata: any = {
-    name,
-    parents: [folderId],
-    appProperties: {
-      murshidUploaderName: uploaderName,
-      murshidUploadedAt: new Date().toISOString(),
-      murshidDescription: description.trim(),
-    },
-  };
-  if (description.trim()) metadata.description = description.trim();
-
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  form.append('file', file);
-
-  const resp = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `فشل الرفع (${resp.status}).`);
+  uploaderName: string
+): Promise<{ id?: string; name?: string }> {
+  const electron = (window as any).electronAPI;
+  if (!electron?.drivePublic?.upload) {
+    throw new Error('بيئة سطح المكتب غير متوفرة.');
   }
+  const name = uploaderName.trim();
+  if (!name) throw new Error('يرجى إدخال اسم الرافع.');
+  if (!title.trim()) throw new Error('يرجى إدخال عنوان الملف.');
+
+  const dataBase64 = await readFileAsBase64(file);
+  const res = await electron.drivePublic.upload({
+    fileName: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    dataBase64,
+    uploaderName: name,
+    title: title.trim(),
+    description: description.trim(),
+  });
+
+  if (!res?.ok) {
+    throw new Error(res?.error || 'فشل رفع الملف.');
+  }
+  return { id: res.id, name: res.name };
 }
 
 /**

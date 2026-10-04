@@ -51,6 +51,9 @@
   --font-sans: "Cairo", sans-serif;
   --font-mono: "Cairo", ui-monospace, monospace;
 
+  /* Soft overshoot-free ease-out used by the top navigation transitions. */
+  --ease-nav: cubic-bezier(0.22, 1, 0.36, 1);
+
   --color-office-blue: var(--office-blue);
   --color-office-hover: var(--office-hover);
   --color-office-bg: var(--office-bg);
@@ -189,6 +192,28 @@ body, body * {
 ::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 2px; }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; border: 1px solid var(--office-bg); }
 ::-webkit-scrollbar-thumb:hover { background: var(--icon-color); }
+
+/* Horizontally scrollable navigation: keep the scroll affordance invisible. */
+.nav-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.nav-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* Navigation transitions.
+   The `*` rule above is unlayered, so it outranks every Tailwind `transition-*`
+   utility (layered) and would silently strip the durations/easings from the nav.
+   These class selectors are unlayered too, so by specificity they win, and the
+   icon highlight/press animations actually run. */
+.nav-item,
+.nav-item-icon {
+  transition-duration: 250ms;
+  transition-timing-function: var(--ease-nav);
+  transition-delay: 0s;
+}
+.nav-item {
+  transition-property: background-color, color, border-color, box-shadow, translate, transform, scale;
+}
+.nav-item-icon {
+  transition-property: color, stroke-width, scale, transform, opacity;
+}
 
 body {
   font-family: "Cairo", sans-serif;

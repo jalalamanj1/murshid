@@ -6,6 +6,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pickFolder: () => ipcRenderer.invoke('dialog:pick-folder'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+
+  // Read-only public Telegram channel page. No token, no Bot API, no scraping
+  // in the renderer — the main process performs the fetch and returns plain text.
+  getPublicChannelPosts: (username) => ipcRenderer.invoke('telegram:public-channel', username),
 
   // ── Session Management ──────────────────────────────────────────
   createSession: (title) => ipcRenderer.invoke('session:create', title),
@@ -37,6 +43,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   drivePublic: {
     list: (folderId) => ipcRenderer.invoke('drive-public:list', folderId),
     download: (fileId, fileName, folderPath) => ipcRenderer.invoke('drive-public:download', fileId, fileName, folderPath),
+    uploadConfig: () => ipcRenderer.invoke('drive-public:upload-config'),
+    upload: (payload) => ipcRenderer.invoke('drive-public:upload', payload),
   },
 
   // ── Record Cover Service ─────────────────────────────────────────
@@ -45,6 +53,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getPreview: (modelId) => ipcRenderer.invoke('cover:get-preview', modelId),
     generate: (modelId, title) => ipcRenderer.invoke('cover:generate', modelId, title),
   },
+
+  
 
   // ── Auto-updater ─────────────────────────────────────────────────
   checkUpdate: () => ipcRenderer.invoke('update:check'),
@@ -55,3 +65,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update:error', (_e, data) => callback({ status: 'error', error: data.error || data.message || JSON.stringify(data) }));
   },
 });
+
+

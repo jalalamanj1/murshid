@@ -1,50 +1,46 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  FileText, 
-  CheckCircle, 
-  Clock, 
-  UserPlus, 
-  FilePlus, 
-  FolderSync, 
-  HeartHandshake, 
-  AlertTriangle,
-  BookOpen,
-  User,
-  Award,
-  TrendingDown,
-  Heart,
-  MessageSquare,
-  Compass,
-  Zap,
-  ClipboardList,
-  X,
-  Trash2,
-  Calendar,
-  Plus,
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
   AlertCircle,
-  PlusCircle
+  ArrowLeft,
+  BookOpen,
+  Calendar,
+  ClipboardList,
+  Compass,
+  ExternalLink,
+  Heart,
+  HeartHandshake,
+  School,
+  Users,
 } from 'lucide-react';
-import { Student, CounselingRecord, CounselorProfile, RecordType, DailyActivityItem } from '../types';
+import {
+  ActiveModule,
+  CounselorProfile,
+  CounselingRecord,
+  RecordType,
+  Student,
+} from '../types';
 import { academicYear, toLatinDigits } from '../lib/format';
-
-interface TodoItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  createdAt: string;
-}
+import { TELEGRAM_CHANNELS } from '../lib/telegramChannels';
+import {
+  MURSHID_PUBLIC_CHANNEL,
+  MURSHID_PUBLIC_CHANNEL_LABEL,
+  MURSHID_PUBLIC_CHANNEL_USERNAME,
+  formatFetchedAt,
+  formatPublicPostDate,
+  subscribeToPublicChannel,
+  type PublicChannelPost,
+} from '../lib/murshidPublicChannel';
 
 interface DashboardViewProps {
   profile: CounselorProfile;
   students: Student[];
   records: CounselingRecord[];
-  onNavigate: (module: string) => void;
+  onNavigate: (module: ActiveModule) => void;
   onQuickAddStudent?: () => void;
   onQuickAddRecord?: () => void;
   onAddRecord?: (newRecord: CounselingRecord) => void;
@@ -53,747 +49,465 @@ interface DashboardViewProps {
   onOpenRecordsForType?: (recordType: RecordType) => void;
 }
 
-export default function DashboardView({ 
-  profile, 
-  students, 
-  records, 
+/**
+ * The official counseling registers. This table is the dashboard's single
+ * source of truth and mirrors the existing record types — nothing is added or
+ * removed here, only rendered more compactly.
+ */
+const RECORD_TYPES_INFO: {
+  type: RecordType;
+  name: string;
+  shortName: string;
+  icon: typeof Heart;
+  desc: string;
+  color: string;
+}[] = [
+  {
+    type: 'HEALTH_STATUS',
+    name: 'سجل الحالة الصحية',
+    shortName: 'الحالة الصحية',
+    icon: Heart,
+    desc: 'رصد الحالات الصحية ومتابعة العلاج المدرسي.',
+    color: 'channel-rose',
+  },
+  {
+    type: 'SPECIAL_CASES',
+    name: 'سجل الحالات الخاصة',
+    shortName: 'الحالات الخاصة',
+    icon: AlertCircle,
+    desc: 'متابعة ذوي الاحتياجات الخاصة والحالات الحرجة.',
+    color: 'channel-purple',
+  },
+  {
+    type: 'GROUP_INDIVIDUAL',
+    name: 'سجل الإرشاد الجمعي والفردي',
+    shortName: 'الإرشاد الجماعي والفردي',
+    icon: Users,
+    desc: 'توثيق جلسات الدعم والاستشارات الفردية والجماعية.',
+    color: 'channel-amber',
+  },
+  {
+    type: 'BEREAVED_STUDENTS',
+    name: 'سجل الطلبة الفاقدين (أحد الوالدين أو كليهما)',
+    shortName: 'الطلبة الفاقدين',
+    icon: HeartHandshake,
+    desc: 'رعاية الأيتام وفاقدي المعيل ودعمهم المتكامل.',
+    color: 'channel-cyan',
+  },
+  {
+    type: 'CASE_STUDY',
+    name: 'سجل دراسة الحالة',
+    shortName: 'دراسة الحالة',
+    icon: BookOpen,
+    desc: 'دراسة معمقة للظواهر السلوكية المعقدة.',
+    color: 'channel-blue',
+  },
+  {
+    type: 'HEALTH_KEY_GUIDE',
+    name: 'سجل الدليل (المفتاح) لدراسة الحالة',
+    shortName: 'الدليل (المفتاح) الدراسي',
+    icon: Compass,
+    desc: 'دليل تصنيف الأمراض وتوصيات المتابعة الوقائية.',
+    color: 'channel-emerald',
+  },
+  {
+    type: 'DAILY_ACTIVITY_PLAN',
+    name: 'سجل النشاط اليومي',
+    shortName: 'النشاط اليومي',
+    icon: ClipboardList,
+    desc: 'خطة النشاط الإرشادي وتدوين اليوميات التنفيذية.',
+    color: 'channel-amber',
+  },
+];
+
+const TELEGRAM_GLYPH_PATH =
+  'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42' +
+  '-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35' +
+  '-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02' +
+  '-1.98 1.25-5.59 3.69-.53.36-1 .54-1.42.53-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03' +
+  '-.24.37-.49 1.02-.74 4-1.74 6.67-2.88 8-3.43 3.81-1.57 4.6-1.84 5.12-1.85.11 0 .37.03.54.17' +
+  '.14.12.18.28.2.45-.02.07-.02.2-.04.28z';
+
+function TelegramGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+      <path fill="currentColor" d={TELEGRAM_GLYPH_PATH} />
+    </svg>
+  );
+}
+
+export default function DashboardView({
+  profile,
+  students,
   onNavigate,
-  onQuickAddStudent,
-  onQuickAddRecord,
-  onAddRecord,
-  onDeleteRecord,
-  onClearStudentsAndCases,
-  onOpenRecordsForType
+  onOpenRecordsForType,
 }: DashboardViewProps) {
-  
-  // Calculate stats
+  // ── Summary statistics ────────────────────────────────────────────────
+  // Only three figures are surfaced: the academic year, the total number of
+  // students, and the number of distinct classes. No gender or teacher split.
   const totalStudents = students.length;
-  const activeRecords = records.filter(r => r.status === 'ONGOING').length;
-  const completedRecords = records.filter(r => r.status === 'COMPLETED').length;
+  const totalClasses = new Set(
+    students.map((s) => (s.classGrade || '').trim()).filter(Boolean)
+  ).size;
+  const yearLabel = academicYear(profile.academicYear);
 
-  // State for the 9 records modal form
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<RecordType | null>(null);
+  // ── "مرشد" card: the live public @murshid_app Telegram channel ────────
+  // The public channel page is the display source of truth. Nothing is read
+  // from Supabase and no local copy is merged in, so a message that is deleted
+  // or edited upstream simply stops being what the public page returns.
+  const [posts, setPosts] = useState<PublicChannelPost[]>([]);
+  const [feedStatus, setFeedStatus] = useState<'loading' | 'ready' | 'empty'>('loading');
+  // Set only when a refresh fails; the previous snapshot is then shown clearly
+  // labelled as stale rather than passed off as current.
+  const [staleSince, setStaleSince] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Form input states
-  const [title, setTitle] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [customStudentName, setCustomStudentName] = useState('');
-  const [description, setDescription] = useState('');
-  const [actionTaken, setActionTaken] = useState('');
-  const [recommendations, setRecommendations] = useState('');
-  const [status, setStatus] = useState<'COMPLETED' | 'ONGOING' | 'ARCHIVED'>('ONGOING');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  /**
+   * A successful read fully replaces the list. Absence is meaningful here: the
+   * reader returns exactly the posts the public page currently renders, so
+   * anything missing from this list is no longer public and must disappear
+   * rather than linger.
+   */
+  const applySnapshot = useCallback((next: PublicChannelPost[], fetchedAt: string) => {
+    setPosts(next);
+    setLastFetchedAt(fetchedAt);
+    setStaleSince(null);
+    setFeedStatus(next.length === 0 ? 'empty' : 'ready');
+  }, []);
 
-  // Specialized State for DAILY_ACTIVITY_PLAN (سجل النشاط اليومي)
-  const [day, setDay] = useState('');
-  const [activities, setActivities] = useState<DailyActivityItem[]>([
-    { id: 'act_1', activity: '', location: '', details: '', displayOrder: 0 }
-  ]);
-
-  // To-Do List State (persisted in localStorage, starts empty)
-  const [todos, setTodos] = useState<TodoItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('murshid_todos');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [newTodoText, setNewTodoText] = useState('');
-  const [todoFilter, setTodoFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
-
-
-
-  const saveTodos = (updatedTodos: TodoItem[]) => {
-    setTodos(updatedTodos);
-    localStorage.setItem('murshid_todos', JSON.stringify(updatedTodos));
-    // Sync to bot's file so deletions/additions/toggles persist across both
-    const api = (window as any).electronAPI;
-    if (api?.telegram?.syncTodos) {
-      api.telegram.syncTodos(updatedTodos);
-    }
-  };
-
-  const handleAddTodo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTodoText.trim()) return;
-
-    const newTask: TodoItem = {
-      id: 'todo_' + Date.now(),
-      text: newTodoText.trim(),
-      completed: false,
-      createdAt: new Date().toLocaleDateString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
+  useEffect(() => {
+    setRefreshing(true);
+    const unsubscribe = subscribeToPublicChannel({
+      channel: MURSHID_PUBLIC_CHANNEL,
+      onUpdate: (next, fetchedAt) => {
+        setRefreshing(false);
+        applySnapshot(next, fetchedAt);
+      },
+      onError: () => {
+        setRefreshing(false);
+        // Keep the last good content only if we can label it as not current.
+        setStaleSince((prev) => prev ?? new Date().toISOString());
+      },
+    });
+    return () => {
+      unsubscribe();
+      setRefreshing(false);
     };
+  }, [applySnapshot]);
 
-    saveTodos([newTask, ...todos]);
-    setNewTodoText('');
-  };
+  /** Bring the list back to the newest post after a refresh. */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && posts.length > 0 && el.scrollTop > 0) el.scrollTop = 0;
+  }, [posts.length, lastFetchedAt]);
 
-  const handleToggleTodo = (id: string) => {
-    const updated = todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    );
-    saveTodos(updated);
-  };
-
-  const handleDeleteTodo = (id: string) => {
-    const updated = todos.filter(todo => todo.id !== id);
-    saveTodos(updated);
-  };
-
-  const filteredTodos = todos.filter(todo => {
-    if (todoFilter === 'ACTIVE') return !todo.completed;
-    if (todoFilter === 'COMPLETED') return todo.completed;
-    return true;
-  });
-
-  // Information about the 9 official records/registers
-  const recordTypesInfo = [
-    {
-      type: 'HEALTH_STATUS' as const,
-      name: 'سجل الحالة الصحية',
-      icon: Heart,
-      desc: 'رصد وتوثيق الحالات الصحية والأمراض المزمنة للطلاب ومتابعة العلاج المدرسي بالتفصيل.',
-      color: 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-    },
-    {
-      type: 'SPECIAL_CASES' as const,
-      name: 'سجل الحالات الخاصة',
-      icon: AlertCircle,
-      desc: 'متابعة شؤون الطلاب من ذوي الاحتياجات الخاصة أو الحالات الاجتماعية والمعيشية الحرجة.',
-      color: 'bg-pink-50 hover:bg-pink-100 text-pink-700 border-pink-200'
-    },
-    {
-      type: 'GROUP_INDIVIDUAL' as const,
-      name: 'سجل الإرشاد الجمعي والفردي',
-      icon: Users,
-      desc: 'توثيق جلسات الدعم والاستشارات الفردية والجماعية للطلاب لتحسين التكيف والتحصيل والتربية.',
-      color: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-    },
-    {
-      type: 'BEREAVED_STUDENTS' as const,
-      name: 'سجل الطلبة الفاقدين (أحد الوالدين أو كليهما)',
-      icon: HeartHandshake,
-      desc: 'رعاية شؤون الطلاب الأيتام وفاقدي المعيل وتقديم الدعم النفسي والاجتماعي والمادي المتكامل لهم.',
-      color: 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200'
-    },
-    {
-      type: 'CASE_STUDY' as const,
-      name: 'سجل دراسة الحالة',
-      icon: BookOpen,
-      desc: 'دراسة معمقة وبحث تفصيلي متكامل للحالات السلوكية المستعصية والظواهر السلوكية المعقدة.',
-      color: 'bg-violet-50 hover:bg-violet-100 text-violet-700 border-violet-200'
-    },
-    {
-      type: 'HEALTH_KEY_GUIDE' as const,
-      name: 'سجل الدليل (المفتاح) لدراسة الحالة',
-      icon: Compass,
-      desc: 'دليل تصنيف وفك ترميز الأمراض وتوصيات المتابعة الوقائية لجميع الفئات والمراحل الدراسية.',
-      color: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border-cyan-200'
-    },
-    {
-      type: 'DAILY_ACTIVITY_PLAN' as const,
-      name: 'سجل النشاط اليومي',
-      icon: ClipboardList,
-      desc: 'توزيع وتنظيم خطة النشاط الإرشادي السنوي والشهري وتدوين اليوميات التنفيذية للعمل الإرشادي.',
-      color: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
-    }
-  ];
-
-  // Open modal handler
-  const handleOpenForm = (type: RecordType) => {
-    setSelectedType(type);
-    setTitle('');
-    setDescription('');
-    setActionTaken('');
-    setRecommendations('');
-    setStudentId('');
-    setCustomStudentName('');
-    setStatus('ONGOING');
-    
-    // Auto detect today's date and Arabic day name
-    const today = new Date();
-    const daysArabic = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    const dayName = daysArabic[today.getDay()];
-    
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const dateStr = String(today.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${dateStr}`;
-    
-    setDate(formattedDate);
-    
-    // Reset specialized daily activity plan states
-    if (type === 'DAILY_ACTIVITY_PLAN') {
-      setDay(dayName);
-      const blankActs = Array.from({ length: 10 }, (_, i) => ({
-        id: `act_blank_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 5)}`,
-        activity: '',
-        location: '',
-        details: '',
-        displayOrder: i
-      }));
-      setActivities(blankActs);
-    } else {
-      setDay('');
-      setActivities([
-        { id: 'act_1', activity: '', location: '', details: '', displayOrder: 0 }
-      ]);
-    }
-    
-    setIsFormOpen(true);
-  };
-
-  // Auto detect today's date and Arabic day name
-  const handleAutoFill = () => {
-    const today = new Date();
-    const daysArabic = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    const dayName = daysArabic[today.getDay()];
-    
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const dateStr = String(today.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${dateStr}`;
-
-    setDay(dayName);
-    setDate(formattedDate);
-  };
-
-  // Add another activity panel
-  const handleAddActivity = () => {
-    const newAct: DailyActivityItem = {
-      id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5),
-      activity: '',
-      location: '',
-      details: '',
-      displayOrder: activities.length
-    };
-    setActivities([...activities, newAct]);
-  };
-
-  // Remove an activity panel
-  const handleRemoveActivity = (id: string) => {
-    if (activities.length === 1) {
-      setActivities([{
-        id: 'act_1',
-        activity: '',
-        location: '',
-        details: '',
-        displayOrder: 0
-      }]);
-    } else {
-      setActivities(activities.filter(act => act.id !== id));
-    }
-  };
-
-  // Update activity field values
-  const handleUpdateActivity = (id: string, field: 'activity' | 'location' | 'details', value: string) => {
-    setActivities(activities.map(act => {
-      if (act.id === id) {
-        return { ...act, [field]: value };
-      }
-      return act;
-    }));
-  };
-
-  // Submit record handler
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (selectedType === 'DAILY_ACTIVITY_PLAN') {
-      const validActivities = activities.filter(act => 
-        act.activity.trim() !== '' || 
-        act.location.trim() !== '' || 
-        act.details.trim() !== ''
-      );
-
-      if (!day) {
-        alert('الرجاء اختيار اليوم.');
-        return;
-      }
-      if (!date) {
-        alert('الرجاء تحديد التاريخ.');
-        return;
-      }
-      if (validActivities.length === 0) {
-        alert('الرجاء تدوين نشاط واحد على الأقل قبل حفظ السجل.');
-        return;
-      }
-
-      // Format description as a beautiful fallback plain text
-      const formattedDescription = validActivities.map((act, idx) => 
-        `النشاط (${idx + 1}): ${act.activity.trim() || 'غير مححدد'}\nالمكان: ${act.location.trim() || 'غير محدد'}\nالتفاصيل: ${act.details.trim() || 'بدون تفاصيل'}`
-      ).join('\n\n--------------------------------\n\n');
-
-      // Create activity array with normalized displayOrder
-      const normalizedActivities = validActivities.map((act, idx) => ({
-        ...act,
-        activity: act.activity.trim(),
-        location: act.location.trim(),
-        details: act.details.trim(),
-        displayOrder: idx
-      }));
-
-      const newRecord: CounselingRecord = {
-        id: 'rec_' + Date.now(),
-        recordType: 'DAILY_ACTIVITY_PLAN',
-        date,
-        day,
-        title: `سجل النشاط اليومي - ${day}`,
-        description: formattedDescription,
-        actionTaken: 'تم تدوين الأنشطة بنجاح في السجل اليومي للمرشد.',
-        recommendations: 'متابعة تنفيذ الأنشطة اليومية المقررة وتحقيق أهداف الإرشاد.',
-        status: 'COMPLETED',
-        updatedAt: new Date().toISOString(),
-        activities: normalizedActivities
-      };
-
-      if (onAddRecord) {
-        onAddRecord(newRecord);
-      }
-
-      // Reset form states
-      setDay('');
-      setActivities([{ id: 'act_1', activity: '', location: '', details: '', displayOrder: 0 }]);
-      setIsFormOpen(false);
-      return;
-    }
-
-    if (!title || !description || !actionTaken || !recommendations) {
-      alert('الرجاء تعبئة جميع الحقول المطلوبة');
-      return;
-    }
-
-    let resolvedStudentName = '';
-    const isGeneralRecord = selectedType === 'DAILY_ACTIVITY_PLAN' || selectedType === 'HEALTH_KEY_GUIDE';
-
-    if (isGeneralRecord) {
-      resolvedStudentName = selectedType === 'DAILY_ACTIVITY_PLAN' ? 'عام / الخطة والنشاط اليومي' : 'عام / الدليل (المفتاح) لدراسة الحالة';
-    } else {
-      if (studentId === 'CUSTOM' || !studentId) {
-        resolvedStudentName = customStudentName || 'طالب غير مسجل';
-      } else {
-        const student = students.find(s => s.id === studentId);
-        resolvedStudentName = student ? student.fullName : 'طالب غير مسجل';
-      }
-    }
-
-    const newRecord: CounselingRecord = {
-      id: 'rec_' + Date.now(),
-      studentId: isGeneralRecord ? undefined : (studentId === 'CUSTOM' ? undefined : studentId),
-      studentName: resolvedStudentName,
-      recordType: selectedType!,
-      date,
-      title,
-      description,
-      actionTaken,
-      recommendations,
-      status,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (onAddRecord) {
-      onAddRecord(newRecord);
-    }
-    
-    setIsFormOpen(false);
-  };
+  const visibleChannels = TELEGRAM_CHANNELS.slice(0, 6);
 
   return (
-    <div className="flex flex-col gap-6 h-full min-h-0 animate-fade-in" dir="rtl">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-6 shrink-0">
-        <div className="card flex items-center gap-5 hover:border-primary transition-colors">
-          <div className="p-4 bg-primary-bg text-primary rounded-xl">
-            <Users className="w-7 h-7" />
+    <div className="flex flex-col gap-5" dir="rtl">
+      {/* ── Summary statistics: exactly three equal cards ─────────────── */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="card !p-5 flex items-center gap-4">
+          <div className="p-3.5 bg-primary-bg text-primary rounded-2xl shrink-0">
+            <Calendar className="w-6 h-6" />
           </div>
-          <div>
-            <p className="text-xs text-muted font-bold">إجمالي الطلاب</p>
-            <h3 className="text-4xl font-extrabold text-main mt-1">{toLatinDigits(totalStudents)}</h3>
-          </div>
-        </div>
-        <div className="card flex items-center gap-5 hover:border-primary transition-colors">
-          <div className="p-4 bg-primary-bg text-primary rounded-xl">
-            <Calendar className="w-7 h-7" />
-          </div>
-          <div>
-            <p className="text-xs text-muted font-bold">العام الدراسي</p>
-            <h3 className="text-4xl font-extrabold text-main mt-1">{academicYear(profile.academicYear)}</h3>
-          </div>
-        </div>
-      </div>
-
-      {/* Records + Telegram */}
-      <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
-        {/* Records */}
-        <div className="card flex flex-col min-h-0">
-          <div className="border-b border-divider-color pb-3 shrink-0">
-            <h3 className="text-sm font-bold text-main">سجلات المرشد التربوي</h3>
-            <p className="text-xs text-muted mt-1">انقر فوق أي سجل لفتح استمارة تدوين وحفظ البيانات مباشرة في الأرشيف</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 mt-4 flex-1 min-h-0 auto-rows-fr">
-            {recordTypesInfo.map((item) => (
-              <button 
-                key={item.type}
-                onClick={() => {
-                  if (onOpenRecordsForType) {
-                    onOpenRecordsForType(item.type);
-                  }
-                }}
-                className="flex flex-col items-start p-3 bg-card-elevated hover:bg-hover border border-border-color hover:border-primary-border rounded-2xl transition-all duration-200 text-right group cursor-pointer justify-between"
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className="p-1.5 rounded-lg bg-primary-bg text-primary group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
-                    <item.icon className="w-4 h-4 shrink-0" />
-                  </div>
-                  <span className="text-xs font-bold text-main group-hover:text-primary transition-colors line-clamp-2 leading-snug">
-                    {item.name}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold text-white bg-primary group-hover:bg-primary-hover mt-2 flex items-center gap-1 self-end px-2.5 py-1 rounded-full shadow-xs">
-                  تدوين جديد +
-                </span>
-              </button>
-            ))}
+          <div className="min-w-0">
+            <p className="text-[11px] text-muted font-bold">العام الدراسي</p>
+            <p className="text-2xl font-extrabold text-main mt-1 tracking-tight">
+              {toLatinDigits(yearLabel)}
+            </p>
           </div>
         </div>
 
-        {/* Telegram */}
-        <div className="card flex flex-col min-h-0">
-          <div className="flex items-center justify-between border-b border-divider-color pb-3 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 bg-primary-bg text-primary rounded-lg shrink-0">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.98 1.25-5.59 3.69-.53.36-1 .54-1.42.53-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.24.37-.49 1.02-.74 4-1.74 6.67-2.88 8-3.43 3.81-1.57 4.6-1.84 5.12-1.85.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.2-.04.28z"/></svg>
+        <div className="card !p-5 flex items-center gap-4">
+          <div className="p-3.5 bg-primary-bg text-primary rounded-2xl shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] text-muted font-bold">إجمالي الطلبة</p>
+            <p className="text-2xl font-extrabold text-main mt-1 tracking-tight">
+              {toLatinDigits(totalStudents)}
+            </p>
+          </div>
+        </div>
+
+        <div className="card !p-5 flex items-center gap-4">
+          <div className="p-3.5 bg-primary-bg text-primary rounded-2xl shrink-0">
+            <School className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] text-muted font-bold">عدد الصفوف</p>
+            <p className="text-2xl font-extrabold text-main mt-1 tracking-tight">
+              {toLatinDigits(totalClasses)}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Three equal information cards ─────────────────────────────── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch">
+        {/* Card 1 — Counseling records (green/pastel accents): work & action */}
+        <div className="card !p-0 flex flex-col overflow-hidden">
+          <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-divider-color">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="p-2 bg-[#16A34A] text-white rounded-xl shrink-0">
+                <ClipboardList className="w-[18px] h-[18px]" />
               </div>
-              <h3 className="text-xs font-bold text-main truncate">قنوات تيليغرام مفيدة للمرشد التربوي</h3>
-            </div>
-            <span className="text-[10px] text-muted bg-bg-hover px-2.5 py-1 rounded-md font-bold shrink-0">6 مصادر متميزة</span>
-          </div>
-          <div className="space-y-3 mt-4 flex-1 min-h-0 overflow-y-auto pe-1">
-            {[
-              {title:'موسوعة الإدارة المدرسية',username:'@almadrase',url:'https://t.me/almadrase',color:'channel-emerald',letter:'م'},
-              {title:'بصمة مرشد',username:'@b8a8b',url:'https://t.me/b8a8b',color:'channel-amber',letter:'ب'},
-              {title:'مكتبة علم النفس',username:'@psychology95',url:'https://t.me/psychology95',color:'channel-blue',letter:'ك'},
-              {title:'حقيبة المقاييس النفسية',username:'@Psychological_measurement_bag',url:'https://t.me/Psychological_measurement_bag',color:'channel-rose',letter:'ح'},
-              {title:'كتب علم النفس',username:'@eilmanafss',url:'https://t.me/eilmanafss',color:'channel-cyan',letter:'ت'},
-              {title:'كروب الارشاد التربوي العام',username:'@alarshad_altarbawii',url:'https://t.me/alarshad_altarbawii',color:'channel-purple',letter:'ك'},
-            ].map((chan, idx) => (
-              <a key={idx} href={chan.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl border border-border-color hover:border-primary-border hover:bg-hover transition-all duration-200">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border ${chan.color}`}>{chan.letter}</div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-main truncate">{chan.title}</p>
-                    <p className="text-[9px] text-muted">{chan.username}</p>
-                  </div>
-                </div>
-                <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold ${chan.color}`}>متابعة</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Records Modal */}
-      {isFormOpen && selectedType && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" dir="rtl">
-          <div className="bg-card rounded-2xl shadow-modal border border-border-color w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-divider-color flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#FFF7ED] text-primary rounded-xl">
-                  <Plus className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-main">
-                    تدوين استمارة جديدة في:
-                  </h4>
-                  <span className="text-[11px] text-primary font-bold">
-                    {recordTypesInfo.find(r => r.type === selectedType)?.name}
-                  </span>
-                </div>
+              <div className="min-w-0">
+                <h3 className="text-[13px] font-bold text-main leading-snug">
+                  سجلات المرشد التربوي
+                </h3>
+                <p className="text-[10px] text-muted mt-1 leading-relaxed">
+                  الوصول السريع إلى سجلات الإرشاد وحفظ البيانات
+                </p>
               </div>
-              <button 
-                onClick={() => setIsFormOpen(false)}
-                className="p-1.5 text-muted hover:text-secondary rounded-lg hover:bg-bg-hover cursor-pointer transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('RECORDS')}
+              className="flex items-center gap-1 text-[10px] font-bold text-success hover:opacity-80 shrink-0"
+            >
+              عرض جميع السجلات
+              <ArrowLeft className="w-3 h-3" />
+            </button>
+          </div>
 
-            {/* Form Content */}
-            <form onSubmit={handleFormSubmit} className="p-5 space-y-5 overflow-y-auto flex-1 text-right">
-              {selectedType === 'DAILY_ACTIVITY_PLAN' ? (
-                <div className="space-y-4 text-right" dir="rtl">
-                  <div className="border border-border-color rounded-xl overflow-hidden bg-card shadow-xs">
-                    <div className="grid grid-cols-2 bg-[#FFF7ED] border-b border-border-color text-xs font-bold p-3 text-main gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-[13px] text-primary">اليوم:</span>
-                        <select 
-                          value={day}
-                          onChange={(e) => setDay(e.target.value)}
-                          required
-                          className="bg-transparent border-b border-dashed border-primary/40 text-main font-bold outline-none px-2 py-0.5 focus:border-primary text-xs w-full max-w-[150px] cursor-pointer"
-                        >
-                          <option value="">-- اختر اليوم --</option>
-                          {['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map(d => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2 justify-end sm:justify-start">
-                        <span className="font-bold text-[13px] text-primary">التاريخ:</span>
-                        <input 
-                          type="date"
-                          required
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          className="bg-transparent border-b border-dashed border-primary/40 text-main font-bold outline-none px-2 py-0.5 focus:border-primary text-xs font-mono w-full max-w-[160px]"
-                        />
-                        <button 
-                          type="button"
-                          onClick={handleAutoFill}
-                          className="p-1 text-primary hover:bg-[#FFF7ED] rounded-full transition-colors cursor-pointer"
-                          title="تعبئة تلقائية لليوم والتاريخ الحالي"
-                        >
-                          <Zap className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-center border-collapse min-w-[600px]">
-                        <thead>
-                          <tr className="bg-[#FFF7ED] border-b border-border-color text-main font-bold text-xs">
-                            <th className="py-2.5 px-3 border-l border-border-color text-center font-bold text-[13px] w-[25%]">النشاط</th>
-                            <th className="py-2.5 px-3 border-l border-border-color text-center font-bold text-[13px] w-[20%]">المكان</th>
-                            <th className="py-2.5 px-3 text-center font-bold text-[13px] w-[55%]">التفاصيل</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activities.map((act, idx) => (
-                            <tr 
-                              key={act.id} 
-                              className={`${
-                                idx % 2 === 0 ? 'bg-card' : 'bg-[#1A1A1A]'
-                              } border-b border-border-color hover:bg-card/40 transition-colors`}
-                            >
-                              <td className="p-1 border-l border-border-color">
-                                <input 
-                                  type="text"
-                                  placeholder="أدخل عنوان النشاط..."
-                                  value={act.activity}
-                                  onChange={(e) => handleUpdateActivity(act.id, 'activity', e.target.value)}
-                                  className="w-full bg-transparent px-2 py-1.5 text-xs text-main focus:bg-card outline-none placeholder:text-muted font-semibold text-center border border-transparent focus:border-border-color rounded-md"
-                                />
-                              </td>
-                              <td className="p-1 border-l border-border-color">
-                                <input 
-                                  type="text"
-                                  placeholder="الموقع..."
-                                  value={act.location}
-                                  onChange={(e) => handleUpdateActivity(act.id, 'location', e.target.value)}
-                                  className="w-full bg-transparent px-2 py-1.5 text-xs text-main focus:bg-card outline-none placeholder:text-muted font-semibold text-center border border-transparent focus:border-border-color rounded-md"
-                                />
-                              </td>
-                              <td className="p-1 flex items-center gap-1">
-                                <input 
-                                  type="text"
-                                  placeholder="مخرجات أو تفاصيل الإجراء المتخذ..."
-                                  value={act.details}
-                                  onChange={(e) => handleUpdateActivity(act.id, 'details', e.target.value)}
-                                  className="w-full bg-transparent px-2 py-1.5 text-xs text-main focus:bg-card outline-none placeholder:text-muted font-medium border border-transparent focus:border-border-color rounded-md flex-1 text-right"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveActivity(act.id)}
-                                  className="text-muted hover:text-danger p-1 rounded-md transition-colors cursor-pointer shrink-0"
-                                  title="حذف أو تفريغ هذا الصف"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center bg-[#FAFAFA] p-2.5 rounded-xl border border-border-color">
-                    <span className="text-[11px] text-muted font-bold">
-                      * يتم تجاهل وحذف الأسطر الفارغة تلقائياً عند حفظ السجل.
-                    </span>
-                    <button 
-                      type="button"
-                      onClick={handleAddActivity}
-                      className="btn-secondary text-xs !py-1.5 !px-4"
-                    >
-                      <PlusCircle className="w-4 h-4" />
-                      <span>+ إضافة سطر نشاط آخر</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  <div className="space-y-1.5">
-                    <label className="form-label">موضوع التدوين / عنوان الحالة <span className="text-danger">*</span></label>
-                    <input 
-                      type="text"
-                      required
-                      placeholder="مثال: علاج صعوبة القراءة، تدني الدرجات في الفيزياء، ..."
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="form-label">تاريخ التدوين <span className="text-danger">*</span></label>
-                    <input 
-                      type="date"
-                      required
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="form-input font-mono text-right"
-                    />
-                  </div>
-
-                  {selectedType !== 'DAILY_ACTIVITY_PLAN' && selectedType !== 'HEALTH_KEY_GUIDE' && (
-                    <div className="space-y-3 p-4 bg-[#FAFAFA] border border-border-color rounded-xl">
-                      <div className="space-y-1.5">
-                        <label className="form-label">الطالب المعني <span className="text-danger">*</span></label>
-                        <select
-                          value={studentId}
-                          onChange={(e) => {
-                            setStudentId(e.target.value);
-                            if (e.target.value !== 'CUSTOM') {
-                              setCustomStudentName('');
-                            }
-                          }}
-                          className="form-input"
-                        >
-                          <option value="">-- اختر طالباً مسجلاً --</option>
-                          {students.map(s => (
-                            <option key={s.id} value={s.id}>{s.fullName} ({s.classGrade})</option>
-                          ))}
-                          <option value="CUSTOM">-- طالب غير مدرج بقائمة التسجيل (كتابة يدوية) --</option>
-                        </select>
-                      </div>
-
-                      {(studentId === 'CUSTOM' || students.length === 0) && (
-                        <div className="space-y-1.5">
-                          <label className="form-label">اسم الطالب (كتابة يدوية) <span className="text-danger">*</span></label>
-                          <input 
-                            type="text"
-                            required
-                            placeholder="اكتب اسم الطالب الثلاثي هنا"
-                            value={customStudentName}
-                            onChange={(e) => setCustomStudentName(e.target.value)}
-                            className="form-input"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <label className="form-label">تفاصيل الموقف / السلوك / المشكلة <span className="text-danger">*</span></label>
-                    <textarea 
-                      required
-                      rows={3}
-                      placeholder={
-                        selectedType === 'ACADEMIC_TRACKING' ? 'صف مستويات الطلاب، ومظاهر التفوق أو التراجع الدراسي وتوصيات العلاج والتحسين...' :
-                        selectedType === 'HEALTH_STATUS' ? 'اكتب التشخيص الطبي، والأعراض المرصودة، وتوصيات الرعاية الصحية للطالب...' :
-                        'اكتب وصفاً مفصلاً للحالة السلوكية أو الموقف الاجتماعي أو التربوي للطالب...'
-                      }
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="form-input resize-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="form-label">الإجراء الإرشادي المتخذ والتدابير المنفذة <span className="text-danger">*</span></label>
-                    <textarea 
-                      required
-                      rows={2}
-                      placeholder="اكتب الجلسات، التوجيهات، الاتصالات، أو المتابعات التي أجريتها..."
-                      value={actionTaken}
-                      onChange={(e) => setActionTaken(e.target.value)}
-                      className="form-input resize-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="form-label">التوصيات وخطوات المتابعة المستقبلية <span className="text-danger">*</span></label>
-                    <textarea 
-                      required
-                      rows={2}
-                      placeholder="التوصيات الخاصة بإدارة المدرسة، المعلمين، أو أولياء الأمور لمتابعة التحسن..."
-                      value={recommendations}
-                      onChange={(e) => setRecommendations(e.target.value)}
-                      className="form-input resize-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="form-label">حالة ملف المتابعة <span className="text-danger">*</span></label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value as any)}
-                      className="form-input"
-                    >
-                      <option value="ONGOING">قيد المتابعة النشطة</option>
-                      <option value="COMPLETED">مكتملة ومغلقة</option>
-                      <option value="ARCHIVED">مؤرشفة للرجوع إليها لاحقاً</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between items-center pt-4 border-t border-divider-color mt-2">
+          <ul className="flex-1 flex flex-col gap-1.5 p-5 pt-4">
+            {RECORD_TYPES_INFO.map((item) => (
+              <li key={item.type}>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (selectedType === 'DAILY_ACTIVITY_PLAN') {
-                      setDay('');
-                      setActivities([{ id: 'act_1', activity: '', location: '', details: '', displayOrder: 0 }]);
-                    } else {
-                      setTitle('');
-                      setDescription('');
-                      setActionTaken('');
-                      setRecommendations('');
-                      setStudentId('');
-                      setCustomStudentName('');
-                      setStatus('ONGOING');
-                    }
-                  }}
-                  className="btn-secondary text-xs !py-2 !px-3.5"
+                  onClick={() => onOpenRecordsForType?.(item.type)}
+                  title={item.name}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl border border-border-color hover:border-primary-border hover:bg-hover text-right"
                 >
-                  مسح الاستمارة
+                  <span
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${item.color}`}
+                  >
+                    <item.icon className="w-4 h-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-bold text-main truncate">
+                      {item.shortName}
+                    </span>
+                    <span className="block text-[9px] text-muted truncate mt-0.5">{item.desc}</span>
+                  </span>
+                  <ArrowLeft className="w-3.5 h-3.5 text-muted shrink-0" />
                 </button>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsFormOpen(false)}
-                    className="btn-secondary text-xs !py-2 !px-4"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-primary text-xs !py-2 !px-5"
-                  >
-                    حفظ وتدوين السجل
-                  </button>
-                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        {/* Card 2 — "مرشد": the live public @murshid_app Telegram channel.
+            Rows come from Telegram's own public channel page, read server-side
+            (Electron main process). No Supabase copy is used or merged here. */}
+        <div className="card !p-0 flex flex-col overflow-hidden">
+          <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-divider-color min-w-0">
+            <div className="p-2 bg-[#229ED9] text-white rounded-xl shrink-0">
+              <TelegramGlyph className="w-[18px] h-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[13px] font-bold text-main leading-snug">مرشد</h3>
+              <p className="text-[10px] text-muted mt-1 leading-relaxed truncate">
+                {MURSHID_PUBLIC_CHANNEL_LABEL}
+              </p>
+              <p className="text-[9px] text-muted mt-0.5" dir="ltr">
+                {MURSHID_PUBLIC_CHANNEL_USERNAME}
+              </p>
+            </div>
+            {refreshing && (
+              <span
+                className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0 mt-1"
+                role="status"
+                aria-label="جاري التحديث"
+              />
+            )}
+          </div>
+
+          {/* Honest failure state: shown whenever the last refresh failed, even
+              if older content is still on screen below. */}
+          {staleSince !== null && (
+            <div
+              className="flex items-start gap-2 px-5 py-2.5 bg-amber-500/10 border-b border-divider-color"
+              role="alert"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-[10px] font-bold text-main leading-relaxed">
+                تعذر تحديث محتوى مرشد حالياً
+                {lastFetchedAt && (
+                  <span className="font-normal text-muted">
+                    {' '}
+                    — المحتوى المعروض غير محدّث وآخر قراءة ناجحة{' '}
+                    {formatFetchedAt(lastFetchedAt)}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* Scrollable feed — newest first, straight from the public page */}
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto overscroll-contain"
+            style={{ maxHeight: 420 }}
+          >
+            {feedStatus === 'loading' && (
+              <div className="flex flex-col gap-3 p-5 pt-4 animate-pulse" aria-busy="true">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex flex-col gap-2 pb-3 border-b border-divider-color last:border-0">
+                    <div className="h-2.5 w-28 rounded bg-hover" />
+                    <div className="h-16 rounded-lg bg-hover" />
+                    <div className="space-y-1.5">
+                      <div className="h-2 w-full rounded bg-hover" />
+                      <div className="h-2 w-4/5 rounded bg-hover" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </form>
+            )}
+
+            {feedStatus === 'empty' && staleSince === null && (
+              <div className="min-h-[170px] flex flex-col items-center justify-center px-4 text-center">
+                <p className="text-[11px] font-bold text-main">لا توجد منشورات علنية حالياً</p>
+                <p className="text-[9px] text-muted mt-1">
+                  لم تظهر أي رسالة في القناة العامة حتى الآن
+                </p>
+              </div>
+            )}
+
+            {posts.length > 0 && (
+              <ul className="flex flex-col">
+                {posts.map((post) => (
+                  <li
+                    key={post.messageId}
+                    className={`flex flex-col gap-2 px-5 py-3.5 border-b border-divider-color last:border-0 ${
+                      staleSince !== null ? 'opacity-60' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-6 h-6 rounded-full bg-[#229ED9] text-white flex items-center justify-center shrink-0">
+                        <TelegramGlyph className="w-3 h-3" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold text-main truncate">
+                          {MURSHID_PUBLIC_CHANNEL_LABEL}
+                        </p>
+                        <p className="text-[9px] text-muted" dir="ltr">
+                          {MURSHID_PUBLIC_CHANNEL_USERNAME}
+                        </p>
+                      </div>
+                      {post.edited && (
+                        <span className="text-[9px] text-muted shrink-0">معدّلة</span>
+                      )}
+                    </div>
+
+                    {post.photoUrl && (
+                      <div className="rounded-lg overflow-hidden border border-border-color bg-hover">
+                        <img
+                          src={post.photoUrl}
+                          alt=""
+                          loading="lazy"
+                          className="w-full max-h-[170px] object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {post.text && (
+                      <p className="text-[11px] text-main leading-[1.9] whitespace-pre-wrap break-words line-clamp-[12]">
+                        {post.text}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] text-muted">
+                        {formatPublicPostDate(post.publishedAt)}
+                      </span>
+                      {post.link && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            (window as any).electronAPI?.openExternal?.(post.link as string)
+                          }
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary-hover"
+                        >
+                          عرض المنشور في Telegram
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
-      )}
+        {/* Card 3 — Telegram channels (blue accent): resource discovery */}
+        <div className="card !p-0 flex flex-col overflow-hidden">
+          <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-divider-color">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="p-2 bg-[#229ED9] text-white rounded-xl shrink-0">
+                <TelegramGlyph className="w-[18px] h-[18px]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-[13px] font-bold text-main leading-snug">
+                  قنوات تيليغرام مفيدة للمرشد التربوي
+                </h3>
+                <p className="text-[10px] text-muted mt-1 leading-relaxed">
+                  مصادر مختارة تساعدك في عملك الإرشادي والتربوي
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-between gap-4 p-5 pt-4">
+            <ul className="space-y-2">
+              {visibleChannels.map((chan) => (
+                <li key={chan.id}>
+                  <a
+                    href={chan.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl border border-border-color hover:border-primary-border hover:bg-hover"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 border ${chan.color}`}
+                    >
+                      {chan.letter}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold text-main truncate">{chan.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[9px] text-muted" dir="ltr">
+                          {chan.username}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${chan.color}`}>
+                          {chan.tag}
+                        </span>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-3.5 h-3.5 text-muted shrink-0" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('SETTINGS')}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-primary hover:text-primary-hover self-start"
+            >
+              عرض جميع القنوات
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
+

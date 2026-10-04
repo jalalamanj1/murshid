@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { User, School, Calendar, MapPin, Sparkles, BookOpen } from 'lucide-react';
+import { User, School, Calendar, MapPin, Sparkles } from 'lucide-react';
 import { CounselorProfile } from '../types';
 import { saveProfile } from '../lib/storage';
-import { GetGrades, STAGE_LABELS } from '../lib/gradeService';
 
 interface RegistrationViewProps {
   onComplete: (profile: CounselorProfile) => void;
@@ -29,7 +28,7 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
     setError('');
 
     if (!fullName.trim()) {
-      setError('يرجى إدخال اسمك الكامل واللقب لإثبات ملكية رخصة العمل.');
+      setError('يرجى إدخال اسمك الكامل.');
       return;
     }
     if (!schoolName.trim()) {
@@ -70,7 +69,6 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
             </div>
             <div>
               <h2 className="text-lg font-bold">مرحباً بك في مُرْشِد!</h2>
-              <p className="text-xs text-white/80 mt-0.5">يرجى ملء البيانات التالية بدقة لتكوين هوية وسجلات البرنامج على حاسوبك.</p>
             </div>
           </div>
         </div>
@@ -85,12 +83,12 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5 col-span-2">
               <label className="form-label" htmlFor="c_name">
-                الاسم الكامل واللقب للمرشد التربوي:
+                الاسم الكامل:
               </label>
               <input
                 id="c_name"
                 type="text"
-                placeholder="أكتب اسمك الثلاثي الكامل واللقب..."
+                placeholder="أكتب اسمك الثلاثي الكامل..."
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="form-input"
@@ -126,7 +124,7 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
             </div>
 
             <div className="space-y-1.5 col-span-2">
-              <label className="form-label" htmlFor="sch_name">اسم المدرسة / المؤسسة التربوية:</label>
+              <label className="form-label" htmlFor="sch_name">اسم المدرسة:</label>
               <input
                 id="sch_name"
                 type="text"
@@ -138,7 +136,7 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
             </div>
 
             <div className="space-y-1.5">
-              <label className="form-label" htmlFor="prov">المحافظة (المديرية العامة للتربية):</label>
+              <label className="form-label" htmlFor="prov">المحافظة:</label>
               <select
                 id="prov"
                 value={province}
@@ -164,28 +162,6 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
                 <option value="HIGH">المرحلة الإعدادية</option>
                 <option value="SECONDARY">المرحلة الثانوية (متوسط + إعدادي)</option>
               </select>
-            </div>
-
-            <div className="col-span-2 bg-[#FFF7ED] border border-primary/20 rounded-xl p-4 space-y-2">
-              <div className="flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-bold text-main">
-                  الصفوف المتاحة في {STAGE_LABELS[schoolType]}:
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {GetGrades(schoolType).map((grade) => (
-                  <span
-                    key={grade}
-                    className="px-2.5 py-1 bg-card border border-primary/30 rounded-lg text-[10px] font-bold text-primary"
-                  >
-                    {grade}
-                  </span>
-                ))}
-              </div>
-              <p className="text-[9px] text-muted">
-                سيتم تقييد قائمة الصفوف في جميع استمارات التسجيل والبحث والسجلات الإرشادية بهذه الصفوف تحديداً.
-              </p>
             </div>
 
             <div className="space-y-1.5">

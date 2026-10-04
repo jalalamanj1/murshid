@@ -8,7 +8,7 @@ export default function SplashView({ onComplete }: SplashViewProps) {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('الاتصال بوحدة التخزين المحلية للبرنامج...');
   const [opacity, setOpacity] = useState(0);
-  const [appVersion, setAppVersion] = useState('1.3.0');
+  const [appVersion, setAppVersion] = useState('1.4.0');
 
   useEffect(() => {
     const electron = (window as any).electronAPI;

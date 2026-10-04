@@ -32,6 +32,26 @@ import { isExcludedField, FIELD_LABELS } from '../lib/exportFields';
 import { academicYear, toLatinDigits } from '../lib/format';
 import { CounselingRecord, RecordType, Student, DailyActivityItem, CounselorProfile } from '../types';
 
+const DAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+/** Local 'YYYY-MM-DD' for today — avoids toISOString()'s UTC off-by-one at night. */
+function localTodayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Arabic day name for a 'YYYY-MM-DD' string, parsed as local time (not UTC). */
+function dayFromDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!m) return '';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return DAY_NAMES[d.getDay()];
+}
+
 interface RecordsListViewProps {
   recordType: RecordType;
   recordTypeName: string;
@@ -172,7 +192,7 @@ export default function RecordsListView({
   const [actionTaken, setActionTaken] = useState('');
   const [recommendations, setRecommendations] = useState('');
   const [status, setStatus] = useState<'COMPLETED' | 'ONGOING' | 'ARCHIVED'>('ONGOING');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(localTodayISO());
 
   // Export state
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -290,21 +310,19 @@ export default function RecordsListView({
   // Filter records matching this type
   const filteredRecords = records.filter(rec => rec.recordType === recordType);
 
-  // Auto detect today's date and Arabic day name
+  // Auto detect today's date (the day name derives from the date automatically)
   const handleAutoFill = () => {
-    const today = new Date();
-    const daysArabic = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    const dayName = daysArabic[today.getDay()];
-    
-    // Format local date YYYY-MM-DD
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const dateStr = String(today.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${dateStr}`;
-
-    setDay(dayName);
-    setDate(formattedDate);
+    setDate(localTodayISO());
   };
+
+  // The day is always connected to the date: whatever date the user picks,
+  // the day name fills in automatically.
+  useEffect(() => {
+    if (recordType === 'DAILY_ACTIVITY_PLAN') {
+      setDay(dayFromDate(date));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, recordType]);
 
   // Add another activity panel
   const handleAddActivity = () => {
@@ -385,7 +403,7 @@ export default function RecordsListView({
     setActionTaken('');
     setRecommendations('');
     setStatus('ONGOING');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(localTodayISO());
     
     // Reset specialized fields
     setDay('');
@@ -519,7 +537,6 @@ export default function RecordsListView({
   };
 
   const isDailyActivityRecord = recordType === 'DAILY_ACTIVITY_PLAN';
-  const daysArabicList = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
   return (
     <div className="space-y-6">
@@ -600,17 +617,9 @@ export default function RecordsListView({
                 <div className="grid grid-cols-2 bg-[#FFF7ED] border-b border-border-color text-xs font-black p-3 text-slate-900 gap-4">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-[13px] text-slate-900">اليوم:</span>
-                    <select 
-                      value={day}
-                      onChange={(e) => setDay(e.target.value)}
-                      required
-                      className="bg-transparent border-b border-dashed border-primary text-slate-900 font-bold outline-none px-2 py-0.5 focus:border-office-blue text-xs w-full max-w-[150px] cursor-pointer"
-                    >
-                      <option value="" className="bg-white">-- اختر اليوم --</option>
-                      {daysArabicList.map(d => (
-                        <option key={d} value={d} className="bg-white">{d}</option>
-                      ))}
-                    </select>
+                    <span className="inline-block border-b border-dashed border-primary text-slate-900 font-bold outline-none px-2 py-0.5 text-xs w-full max-w-[150px]">
+                      {day || '--'}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2 justify-end sm:justify-start">

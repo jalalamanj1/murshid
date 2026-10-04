@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type AppFlowStage = 'SPLASH' | 'REGISTRATION' | 'MAIN';
+export type AppFlowStage = 'SPLASH' | 'LOCKED' | 'REGISTRATION' | 'MAIN';
 
 export type ActiveModule =
   | 'DASHBOARD'

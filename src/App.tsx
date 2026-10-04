@@ -44,6 +44,7 @@ import {
 
 // Components
 import SplashView from './components/SplashView';
+import LockScreen from './components/LockScreen';
 import RegistrationView from './components/RegistrationView';
 import DesktopWindow from './components/DesktopWindow';
 import DashboardView from './components/DashboardView';
@@ -180,6 +181,10 @@ export default function App() {
   }, []);
 
   const handleSplashComplete = () => {
+    setFlowStage('LOCKED');
+  };
+
+  const handleUnlocked = () => {
     if (!profile.isRegistered) {
       setFlowStage('REGISTRATION');
     } else {
@@ -934,6 +939,10 @@ export default function App() {
   // Flow Stage Routing
   if (flowStage === 'SPLASH') {
     return <SplashView onComplete={handleSplashComplete} />;
+  }
+
+  if (flowStage === 'LOCKED') {
+    return <LockScreen onUnlock={handleUnlocked} />;
   }
 
   if (flowStage === 'REGISTRATION') {

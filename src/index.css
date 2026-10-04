@@ -197,6 +197,23 @@ body, body * {
 .nav-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .nav-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
+/* Lock screen: gentle drift for the floating passcode characters, and a
+   shake for a wrong pick. Inline styles apply per-chip duration/delay. */
+@keyframes lock-drift {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  25%  { transform: translate(var(--dx, 24px), var(--dy, -16px)) rotate(var(--rot, 4deg)); }
+  50%  { transform: translate(calc(var(--dx, 24px) * -0.6), var(--dy, 16px)) rotate(calc(var(--rot, 4deg) * -1)); }
+  75%  { transform: translate(calc(var(--dx, 24px) * 0.4), calc(var(--dy, 16px) * -0.8)) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes lock-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-14px); }
+  40% { transform: translateX(12px); }
+  60% { transform: translateX(-8px); }
+  80% { transform: translateX(6px); }
+}
+
 /* Navigation transitions.
    The `*` rule above is unlayered, so it outranks every Tailwind `transition-*`
    utility (layered) and would silently strip the durations/easings from the nav.

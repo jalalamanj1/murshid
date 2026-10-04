@@ -17,6 +17,9 @@ const updateManager = require('./update-manager.cjs');
 // ── Application-wide Zoom ─────────────────────────────────────────────
 const zoom = require('./zoom.cjs');
 
+// ── AI service (Voice Entry: OpenCode Go API) ─────────────────────────
+const aiService = require('./aiService.cjs');
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -74,6 +77,16 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Allow microphone capture for the Voice Entry feature (Whisper runs in the
+  // renderer, so getUserMedia must not be blocked by Electron's default policy).
+  const { session } = require('electron');
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(permission === 'media' || permission === 'mediaKeySystem');
+  });
+
+  // ── AI service IPC (Voice Entry) ────────────────────────────────────
+  aiService.init(ipcMain);
+
   // ── Update Check (production only) ─────────────────────────────
   if (!isDev) {
     try {

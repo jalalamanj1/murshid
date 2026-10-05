@@ -56,16 +56,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   
 
-  // ── AI Voice Entry (extraction runs in main; API key never reaches here) ──
-  ai: {
-    config: () => ipcRenderer.invoke('ai:config'),
-    setKey: (apiKey) => ipcRenderer.invoke('ai:set-key', apiKey),
-    setModel: (model) => ipcRenderer.invoke('ai:set-model', model),
-    setBaseUrl: (baseUrl) => ipcRenderer.invoke('ai:set-base-url', baseUrl),
-    extractDailyActivity: (transcript, context) => ipcRenderer.invoke('ai:extract-daily-activity', transcript, context),
-    test: () => ipcRenderer.invoke('ai:test'),
-  },
-
   // ── Auto-updater ─────────────────────────────────────────────────
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),

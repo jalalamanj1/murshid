@@ -26,15 +26,12 @@ import {
   Table,
   Loader2,
   AlertTriangle,
-  X,
-  Mic
+  X
 } from 'lucide-react';
 import { isExcludedField, FIELD_LABELS } from '../lib/exportFields';
 import { academicYear, toLatinDigits } from '../lib/format';
 import { localTodayISO, dayFromDate } from '../lib/dateUtils';
 import { CounselingRecord, RecordType, Student, DailyActivityItem, CounselorProfile } from '../types';
-import VoiceEntryModal from './VoiceEntryModal';
-import { DailyActivityDraft } from '../lib/dailyActivityExtract';
 
 interface RecordsListViewProps {
   recordType: RecordType;
@@ -394,25 +391,6 @@ export default function RecordsListView({
     setActivities([{ id: 'act_1', activity: '', location: '', details: '', displayOrder: 0 }]);
   };
 
-  // ── Voice Entry (AI) ──────────────────────────────────────────────
-  const [voiceOpen, setVoiceOpen] = useState(false);
-
-  const handleVoiceApply = (draft: DailyActivityDraft) => {
-    setEditingRecordId(null);
-    setDate(draft.date);
-    setDay(dayFromDate(draft.date));
-    setActivities(draft.activities.map((a, i) => ({
-      id: 'act_voice_' + Date.now() + '_' + i,
-      activity: a.activity,
-      location: a.location,
-      details: a.details,
-      displayOrder: i,
-    })));
-    setVoiceOpen(false);
-    setShowAddForm(true);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-  };
-
   // Form Submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -569,15 +547,6 @@ export default function RecordsListView({
         </div>
 
         <div className="flex gap-2">
-          {isDailyActivityRecord && (
-            <button
-              onClick={() => setVoiceOpen(true)}
-              className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/40 text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-            >
-              <Mic className="w-4 h-4" />
-              <span>إدخال صوتي</span>
-            </button>
-          )}
           {isDailyActivityRecord && (
             <button
               onClick={() => setShowExportDialog(true)}
@@ -1427,13 +1396,6 @@ export default function RecordsListView({
           </div>
         </div>
       )}
-
-      {/* Voice Entry (AI) modal */}
-      <VoiceEntryModal
-        open={voiceOpen}
-        onClose={() => setVoiceOpen(false)}
-        onApply={handleVoiceApply}
-      />
     </div>
   );
 }

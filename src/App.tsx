@@ -67,7 +67,6 @@ import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
 import RecordCoversView from './components/RecordCoversView';
 import ExportSection from './components/ExportSection';
 import UpdateSettingsView from './components/UpdateSettingsView';
-import AiSettingsCard from './components/AiSettingsCard';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
 
 import { 
@@ -901,8 +900,6 @@ export default function App() {
               </div>
 
               <UpdateSettingsView />
-
-              <AiSettingsCard />
 
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-main">حول النظام</h4>

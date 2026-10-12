@@ -1,11 +1,62 @@
 const { autoUpdater } = require('electron-updater');
 const { BrowserWindow } = require('electron');
 
+// ── Updater hardening ────────────────────────────────────────────────
+// Differential updates need the *previous* release's .blockmap to be present
+// on GitHub; when it is missing or not yet available the updater 404s. Full
+// downloads are far more robust for this app, so we always take the full file.
+autoUpdater.disableDifferentialDownload = true;
+autoUpdater.disableWebInstaller = true;
+autoUpdater.autoDownload = false; // downloads are driven (and retried) below
+
+const DOWNLOAD_ATTEMPTS = 6;
+const RETRY_DELAY_MS = 5000;
+
 let _mainWindow = null;
 let _checkDone = false;
 let _updateAvailable = false;
 let _manualMode = false;
 let _eventsRegistered = false;
+let _downloading = false;
+
+/**
+ * Download the update, retrying on failure. GitHub occasionally serves a 404
+ * for a release asset for a short while right after a release is published;
+ * a few retries turn that transient error into a successful update.
+ */
+async function downloadWithRetry() {
+  _downloading = true;
+  let lastErr = null;
+  try {
+    for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++) {
+      try {
+        await autoUpdater.downloadUpdate();
+        return true;
+      } catch (err) {
+        lastErr = err;
+        console.error(`[Update] Download attempt ${attempt}/${DOWNLOAD_ATTEMPTS} failed: ${err.message}`);
+        if (attempt < DOWNLOAD_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        }
+      }
+    }
+    throw lastErr;
+  } finally {
+    _downloading = false;
+  }
+}
+
+function surfaceUpdateError(message) {
+  _checkDone = true;
+  if (_manualMode) {
+    sendToRenderer('update:error', { error: message });
+  } else if (_mainWindow && !_mainWindow.isDestroyed()) {
+    _mainWindow.webContents.executeJavaScript(`
+      var s = document.getElementById('update-status');
+      if (s) s.textContent = 'تعذر التحقق من التحديثات: ${String(message).replace(/'/g, "\\'")}';
+    `).catch(() => {});
+  }
+}
 
 function registerEvents() {
   if (_eventsRegistered) return;
@@ -16,11 +67,10 @@ function registerEvents() {
     console.log('[Update] New version available:', info.version);
     if (_manualMode) {
       sendToRenderer('update:status', { status: 'available', version: info.version });
-      autoUpdater.downloadUpdate();
     } else {
       showForceUpdateScreen(info.version);
-      autoUpdater.downloadUpdate();
     }
+    downloadWithRetry().catch((err) => surfaceUpdateError(err.message));
   });
 
   autoUpdater.on('update-not-available', () => {
@@ -61,14 +111,10 @@ function registerEvents() {
 
   autoUpdater.on('error', (err) => {
     console.error('[Update] Error:', err.message);
-    _checkDone = true;
-    if (_manualMode) {
-      sendToRenderer('update:error', { error: err.message });
-    } else if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.executeJavaScript(`
-        document.getElementById('update-status').textContent = 'تعذر التحقق من التحديثات: ${err.message.replace(/'/g, "\\'")}';
-      `).catch(() => {});
-    }
+    // While downloadWithRetry is running, failures are retried there; only
+    // surface an error once every attempt has been exhausted.
+    if (_downloading) return;
+    surfaceUpdateError(err.message);
   });
 }
 

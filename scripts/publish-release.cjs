@@ -96,16 +96,24 @@ if (localSha512 !== ymlSha512) {
   fail(`local exe sha512 does NOT match latest.yml. Refusing to upload.`);
 }
 
-// ── 3. Ensure the GitHub release/tag exists ──────────────────────────
+// ── 3. Ensure the GitHub release/tag exists (as a DRAFT) ─────────────
+// Publishing only after every asset is attached removes the window where the
+// release is public but its assets are missing — which makes the auto-updater
+// hit "Cannot download ... status 404" right after a release.
 if (releaseExists()) {
-  console.log(`[release] release ${TAG} already exists - reusing it`);
+  console.log(`[release] release ${TAG} already exists - reusing it (hidden while uploading)`);
+  sh(`gh release edit ${TAG} --repo ${REPO} --draft=true`);
 } else {
-  console.log(`[release] creating release ${TAG}`);
-  sh(`gh release create ${TAG} --repo ${REPO} --target ${TARGET_BRANCH} --title "${version}" --notes "النسخة ${version}"`);
+  console.log(`[release] creating draft release ${TAG}`);
+  sh(`gh release create ${TAG} --repo ${REPO} --target ${TARGET_BRANCH} --title "${version}" --notes "النسخة ${version}" --draft`);
 }
 
 // ── 4. Upload (clobber, in case of re-runs) ──────────────────────────
 sh(`gh release upload ${TAG} "${exePath}" "${blockmapPath}" "${latestYmlPath}" --repo ${REPO} --clobber`);
+
+// ── 4b. Publish now that all three assets are attached ───────────────
+console.log(`[release] publishing ${TAG}`);
+sh(`gh release edit ${TAG} --repo ${REPO} --draft=false`);
 
 // ── 5. Verify what is actually served ────────────────────────────────
 const verifyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'murshid-verify-'));

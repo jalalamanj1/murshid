@@ -162,10 +162,12 @@ const TRANSFORMATIONS = {
       day: (r) => r.day || '',
       date: (r) => r.date || '',
       // Array kept intact so the template renders one row per activity.
+      // Accept both the raw record shape (location) and the already-mapped
+      // export shape (place) so the value is never dropped.
       activities: (r) => (Array.isArray(r.activities)
         ? r.activities.map(a => ({
             activity: a.activity || '',
-            place: a.location || '',
+            place: a.place || a.location || '',
             details: a.details || '',
           }))
         : []),

@@ -44,6 +44,8 @@ export interface RecordImportResult {
   recognized: number;
   totalFields: number;
   warnings: string[];
+  /** Short human summary, e.g. "3 أيام · 12 نشاطاً". */
+  detail?: string;
 }
 
 const uid = () => `imp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -62,43 +64,131 @@ function decodeXmlEntities(text: string): string {
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 
-/** Extract the document's paragraphs and table cells as plain text lines. */
-async function readDocxText(file: File): Promise<string> {
+/** A Word table, normalised to rows of cell text. */
+interface DocxTable {
+  rows: string[][];
+}
+
+type DocxBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'table'; table: DocxTable };
+
+function extractRuns(xmlChunk: string): string {
+  const prepared = xmlChunk.replace(/<\/w:p>/g, ' ').replace(/<w:tab[^>]*\/>/g, ' ');
+  const parts: string[] = [];
+  const runRe = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+  let match: RegExpExecArray | null;
+  while ((match = runRe.exec(prepared))) parts.push(decodeXmlEntities(match[1]));
+  return clean(parts.join(''));
+}
+
+/**
+ * Read the document body in order, keeping tables as grids and paragraphs as
+ * plain text. Preserving table row/cell boundaries is what allows one row to
+ * become one record (per student / per day) instead of a soup of lines.
+ */
+async function readDocxBlocks(file: File): Promise<DocxBlock[]> {
   const buffer = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(buffer);
   const doc = zip.file('word/document.xml');
   if (!doc) throw new Error('الملف ليس مستند Word صالح.');
-  let xml = await doc.async('string');
-  xml = xml
-    .replace(/<w:tab[^>]*\/>/g, '\t')
-    .replace(/<\/w:tc>/g, '\t')
-    .replace(/<\/w:p>/g, '\n')
-    .replace(/<w:br[^>]*\/>/g, '\n');
-  const text = decodeXmlEntities(xml.replace(/<[^>]+>/g, ''));
-  return text;
+  const xml = await doc.async('string');
+
+  const blocks: DocxBlock[] = [];
+  const blockRe = /<w:tbl\b[\s\S]*?<\/w:tbl>|<w:p\b[\s\S]*?<\/w:p>/g;
+  let block: RegExpExecArray | null;
+  while ((block = blockRe.exec(xml))) {
+    const chunk = block[0];
+    if (chunk.startsWith('<w:tbl')) {
+      const rows: string[][] = [];
+      const rowRe = /<w:tr\b[\s\S]*?<\/w:tr>/g;
+      let row: RegExpExecArray | null;
+      while ((row = rowRe.exec(chunk))) {
+        const cells: string[] = [];
+        const cellRe = /<w:tc\b[\s\S]*?<\/w:tc>/g;
+        let cell: RegExpExecArray | null;
+        while ((cell = cellRe.exec(row[0]))) cells.push(extractRuns(cell[0]));
+        if (cells.some(Boolean)) rows.push(cells);
+      }
+      if (rows.length) blocks.push({ type: 'table', table: { rows } });
+    } else {
+      const text = extractRuns(chunk);
+      if (text) blocks.push({ type: 'paragraph', text });
+    }
+  }
+
+  if (blocks.length === 0) {
+    const text = extractRuns(xml);
+    if (text) blocks.push({ type: 'paragraph', text });
+  }
+  return blocks;
 }
 
-/** Turn "label: value" lines (or tab-separated table rows) into a map. */
+/** Turn "label: value" lines into a map (paragraphs without tables). */
 function textToLabelMap(text: string): LabelMap {
   const map: LabelMap = {};
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\t+/g, '\t').trim();
+    const line = rawLine.trim();
     if (!line) continue;
-
-    const colon = line.indexOf(':');
-    if (colon > 0) {
-      const label = clean(line.slice(0, colon));
-      const value = clean(line.slice(colon + 1));
-      if (label) map[label] = value;
-      continue;
-    }
-
-    const cells = line.split('\t').map(clean).filter(Boolean);
-    for (let i = 0; i < cells.length - 1; i += 2) {
-      map[cells[i]] = cells[i + 1];
-    }
+    const colon = line.search(/[:：]/);
+    if (colon <= 0) continue;
+    const label = clean(line.slice(0, colon));
+    const value = clean(line.slice(colon + 1));
+    if (label) map[label] = value;
   }
   return map;
+}
+
+const endsWithLabelColon = (value: string) => /[:：]\s*$/.test(value);
+
+/**
+ * Turn one table into records.
+ *  · A wide header row ("اسم الطالب | الصف | ...") yields one record per row.
+ *  · A two-column label/value table yields one record per table.
+ */
+function tableToMaps(table: DocxTable): LabelMap[] {
+  const rows = table.rows.map((r) => r.map(clean)).filter((r) => r.some(Boolean));
+  if (rows.length === 0) return [];
+
+  const filled = rows[0].filter(Boolean);
+  const headerish =
+    filled.length >= 3 &&
+    rows[0].every((cell) => !cell || !endsWithLabelColon(cell)) &&
+    !rows[0].some((cell) => /^(اليوم|التاريخ)$/.test(normalizeHeader(cell.replace(/[:：]/g, ''))));
+
+  if (headerish) {
+    const headers = rows[0];
+    return rows
+      .slice(1)
+      .map((cells) => {
+        const map: LabelMap = {};
+        headers.forEach((header, index) => {
+          if (!header) return;
+          const value = cells[index] || '';
+          if (value) map[header] = value;
+        });
+        return map;
+      })
+      .filter((map) => Object.keys(map).length > 0);
+  }
+
+  const map: LabelMap = {};
+  for (const row of rows) {
+    for (let i = 0; i < row.length; i += 1) {
+      const cell = row[i];
+      if (!cell) continue;
+      const next = row[i + 1];
+      if (endsWithLabelColon(cell)) {
+        const label = clean(cell.replace(/[:：]\s*$/, ''));
+        if (label) map[label] = next && !endsWithLabelColon(next) ? next : '';
+        if (next && !endsWithLabelColon(next)) i += 1;
+      } else if (next !== undefined && endsWithLabelColon(next)) {
+        // value written before its label — ignore, the label iteration handles it
+        continue;
+      }
+    }
+  }
+  return Object.keys(map).length > 0 ? [map] : [];
 }
 
 /** Read any supported file into one label map per record. */
@@ -106,7 +196,18 @@ export async function parseRecordFile(file: File): Promise<LabelMap[]> {
   const name = file.name.toLowerCase();
 
   if (name.endsWith('.docx')) {
-    return [textToLabelMap(await readDocxText(file))];
+    const blocks = await readDocxBlocks(file);
+    const paragraphMap = textToLabelMap(
+      blocks.filter((b) => b.type === 'paragraph').map((b) => b.text).join('\n')
+    );
+
+    const maps: LabelMap[] = [];
+    for (const block of blocks) {
+      if (block.type === 'table') maps.push(...tableToMaps(block.table));
+    }
+
+    if (maps.length > 0) return maps.map((map) => ({ ...paragraphMap, ...map }));
+    return Object.keys(paragraphMap).length > 0 ? [paragraphMap] : [];
   }
 
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
@@ -133,6 +234,259 @@ export async function parseRecordFile(file: File): Promise<LabelMap[]> {
   }
 
   throw new Error('صيغة الملف غير مدعومة. استخدم DOCX أو XLSX.');
+}
+
+// ── Daily activity (one record per day) ──────────────────────────────
+
+export interface ParsedDayActivity {
+  activity: string;
+  location: string;
+  details: string;
+}
+
+export interface ParsedDay {
+  day: string;
+  date: string;
+  activities: ParsedDayActivity[];
+}
+
+const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+
+function latinize(value: string): string {
+  return value.replace(/[٠-٩]/g, (d) => String(ARABIC_DIGITS.indexOf(d)));
+}
+
+function pad2(value: string | number): string {
+  return String(value).padStart(2, '0');
+}
+
+/** Accept 2026/11/16, 16/11/2026, 16-11-2026 and Arabic digits. */
+function normalizeDateValue(raw: string): string {
+  const value = latinize(clean(raw)).replace(/[.،]/g, '/').replace(/-/g, '/');
+  let match = value.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (match) return `${match[1]}-${pad2(match[2])}-${pad2(match[3])}`;
+
+  match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) {
+    let day = Number(match[1]);
+    let month = Number(match[2]);
+    if (month > 12 && day <= 12) [day, month] = [month, day];
+    return `${match[3]}-${pad2(month)}-${pad2(day)}`;
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(parsed.getDate())}`;
+  }
+  return '';
+}
+
+function weekdayFromDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return new Date(y, m - 1, d).toLocaleDateString('ar-IQ', { weekday: 'long' });
+}
+
+function dayAndDateFromText(text: string): { day?: string; date?: string } {
+  const result: { day?: string; date?: string } = {};
+  const dayMatch = text.match(/اليوم\s*[:：]?\s*([^\s|]+)/);
+  if (dayMatch) result.day = clean(dayMatch[1]);
+  const dateMatch = text.match(/التاريخ\s*[:：]?\s*([0-9\u0660-\u0669][0-9\u0660-\u0669\/\.\-]*)/);
+  if (dateMatch) result.date = normalizeDateValue(dateMatch[1]);
+  return result;
+}
+
+function dailyDaysFromTable(table: DocxTable, context: { day: string; date: string }): ParsedDay[] {
+  const rows = table.rows.map((r) => r.map(clean)).filter((r) => r.some(Boolean));
+  if (rows.length === 0) return [];
+
+  let day = context.day;
+  let date = context.date;
+
+  // Day/date cells can sit above the activity header inside the same table.
+  for (const row of rows) {
+    for (let i = 0; i < row.length; i += 1) {
+      const label = normalizeHeader(row[i].replace(/[:：]/g, ''));
+      if (!row[i + 1]) continue;
+      if (label === 'اليوم') day = row[i + 1];
+      if (label === 'التاريخ') date = normalizeDateValue(row[i + 1]) || row[i + 1];
+    }
+  }
+
+  const headerIndex = rows.findIndex((row) =>
+    row.some((cell) => normalizeHeader(cell).includes('نشاط'))
+  );
+  if (headerIndex === -1) return [];
+
+  const header = rows[headerIndex];
+  const columnOf = (words: string[]) =>
+    header.findIndex((cell) => words.some((word) => normalizeHeader(cell).includes(word)));
+
+  const activityColumn = columnOf(['نشاط']);
+  const locationColumn = columnOf(['مكان', 'موقع']);
+  const detailsColumn = columnOf(['تفاصيل', 'اجراء', 'مخرج']);
+  const dayColumn = header.findIndex((cell) => normalizeHeader(cell) === 'اليوم');
+  const dateColumn = header.findIndex((cell) => normalizeHeader(cell) === 'التاريخ');
+
+  const dataRows = rows.slice(headerIndex + 1);
+  const cell = (row: string[], index: number) => (index >= 0 ? row[index] || '' : '');
+
+  // Table already has a day/date per row.
+  if (dayColumn !== -1 && dateColumn !== -1) {
+    return dataRows
+      .map((row) => {
+        const rowDay = cell(row, dayColumn) || day;
+        const rowDate = normalizeDateValue(cell(row, dateColumn)) || date;
+        const activity = {
+          activity: cell(row, activityColumn),
+          location: cell(row, locationColumn),
+          details: cell(row, detailsColumn),
+        };
+        return { day: rowDay, date: rowDate, activities: [activity] };
+      })
+      .filter((entry) => entry.activities[0].activity || entry.activities[0].details);
+  }
+
+  const activities = dataRows
+    .map((row) => ({
+      activity: cell(row, activityColumn),
+      location: cell(row, locationColumn),
+      details: cell(row, detailsColumn),
+    }))
+    .filter((activity) => activity.activity || activity.location || activity.details);
+
+  if (activities.length === 0) return [];
+  return [{ day, date, activities }];
+}
+
+async function parseDailyExcel(file: File): Promise<ParsedDay[]> {
+  const data = await readExcel(file);
+  if (!data.rows.length) return [];
+
+  const headers = Object.keys(data.rows[0]).map(clean);
+  const columnOf = (words: string[]) =>
+    headers.find((header) => words.some((word) => normalizeHeader(header).includes(word)));
+
+  const dateHeader = columnOf(['تاريخ']);
+  const dayHeader = columnOf(['اليوم']);
+  const activityHeader = columnOf(['نشاط']);
+  const locationHeader = columnOf(['مكان', 'موقع']);
+  const detailsHeader = columnOf(['تفاصيل', 'اجراء']);
+
+  if (!activityHeader) return [];
+
+  const groups = new Map<string, ParsedDay>();
+  for (const row of data.rows) {
+    const date = dateHeader ? normalizeDateValue(clean(row[dateHeader])) : '';
+    const day = dayHeader ? clean(row[dayHeader]) : '';
+    const key = `${date}|${day}`;
+    const activity = {
+      activity: activityHeader ? clean(row[activityHeader]) : '',
+      location: locationHeader ? clean(row[locationHeader]) : '',
+      details: detailsHeader ? clean(row[detailsHeader]) : '',
+    };
+    if (!activity.activity && !activity.location && !activity.details) continue;
+
+    const existing = groups.get(key);
+    if (existing) existing.activities.push(activity);
+    else groups.set(key, { day, date, activities: [activity] });
+  }
+  return Array.from(groups.values());
+}
+
+/**
+ * Read a daily-activity document. Each table is interpreted on its own, so one
+ * file containing several days produces several records, one per day.
+ */
+export async function parseDailyActivityFile(
+  file: File
+): Promise<{ days: ParsedDay[]; warnings: string[] }> {
+  const name = file.name.toLowerCase();
+  const warnings: string[] = [];
+  const collected: ParsedDay[] = [];
+
+  if (name.endsWith('.docx')) {
+    const blocks = await readDocxBlocks(file);
+    const context = { day: '', date: '' };
+
+    for (const block of blocks) {
+      if (block.type === 'paragraph') {
+        const found = dayAndDateFromText(block.text);
+        if (found.day) context.day = found.day;
+        if (found.date) context.date = found.date;
+        continue;
+      }
+      collected.push(...dailyDaysFromTable(block.table, context));
+    }
+  } else if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
+    collected.push(...(await parseDailyExcel(file)));
+  } else {
+    throw new Error('صيغة الملف غير مدعومة. استخدم DOCX أو XLSX.');
+  }
+
+  // Merge tables/pages that describe the same day.
+  const merged = new Map<string, ParsedDay>();
+  for (const day of collected) {
+    const key = `${day.date}|${day.day}`;
+    const existing = merged.get(key);
+    if (existing) existing.activities.push(...day.activities);
+    else merged.set(key, { ...day, activities: [...day.activities] });
+  }
+
+  const days = Array.from(merged.values()).map((entry) => {
+    let date = normalizeDateValue(entry.date) || entry.date;
+    if (!date) {
+      date = new Date().toISOString().slice(0, 10);
+      warnings.push(`لم يُعثر على تاريخ في أحد الجداول — استُخدم تاريخ اليوم (${date}).`);
+    }
+    const day = entry.day || weekdayFromDate(date) || 'غير محدد';
+    return { day, date, activities: entry.activities };
+  });
+
+  if (days.length === 0) {
+    warnings.push(
+      'لم يتم العثور على جدول أنشطة قابل للقراءة. يجب أن يحتوي الجدول على عمود "النشاط" (والمكان/التفاصيل اختياريان).'
+    );
+  }
+
+  return { days, warnings };
+}
+
+/** Build one DAILY_ACTIVITY_PLAN record per parsed day. */
+export function buildDailyActivityRecords(days: ParsedDay[]): CounselingRecord[] {
+  const stamp = Date.now();
+  return days.map((day, index) => {
+    const activities = day.activities.map((activity, order) => ({
+      id: `act_imp_${stamp}_${index}_${order}`,
+      activity: activity.activity,
+      location: activity.location,
+      details: activity.details,
+      displayOrder: order,
+    }));
+
+    const description = activities
+      .map(
+        (activity, order) =>
+          `النشاط (${order + 1}): ${activity.activity || 'غير محدد'}\n` +
+          `المكان: ${activity.location || 'غير محدد'}\n` +
+          `التفاصيل: ${activity.details || 'بدون تفاصيل'}`
+      )
+      .join('\n\n--------------------------------\n\n');
+
+    return {
+      id: `rec_imp_${stamp}_${index}`,
+      recordType: 'DAILY_ACTIVITY_PLAN',
+      date: day.date,
+      day: day.day,
+      title: `سجل النشاط اليومي - ${day.day}`,
+      description,
+      actionTaken: 'تم تدوين الأنشطة بنجاح في السجل اليومي للمرشد.',
+      recommendations: 'متابعة تنفيذ الأنشطة اليومية المقررة وتحقيق أهداف الإرشاد.',
+      status: 'COMPLETED',
+      updatedAt: nowIso(),
+      activities,
+    } as CounselingRecord;
+  });
 }
 
 // ── Field mapping ────────────────────────────────────────────────────
@@ -168,9 +522,16 @@ function findStudent(students: Student[], name: string): Student | undefined {
   return students.find((s) => normalizeHeader(s.fullName) === needle);
 }
 
+/** Split "الأول المتوسط - شعبة ب" into its two parts. */
+function splitGradeSection(value: string): { grade: string; section: string } | null {
+  const match = clean(value).match(/^(.*?)\s*[-–]\s*(?:الشعبة|شعبة)\s*([أبجA-Ca-c])\s*$/);
+  if (!match) return null;
+  return { grade: clean(match[1]), section: clean(match[2]) };
+}
+
 const STUDENT_FIELDS: FieldSpec[] = [
   { key: 'studentName', labels: ['اسم الطالب', 'الطالب', 'الاسم', 'اسم الطالبة'] },
-  { key: 'grade', labels: ['الصف', 'المرحلة', 'الصف الدراسي'] },
+  { key: 'grade', labels: ['الصف', 'المرحلة', 'الصف الدراسي', 'الصف والشعبة'] },
   { key: 'section', labels: ['الشعبة', 'القسم', 'الصف / الشعبة'] },
   { key: 'guardianPhone', labels: ['هاتف ولي الأمر', 'رقم هاتف ولي الأمر', 'هاتف الأب', 'الهاتف', 'رقم الهاتف'] },
   { key: 'address', labels: ['العنوان', 'عنوان السكن', 'السكن'] },
@@ -285,8 +646,18 @@ export function buildRecords(
     const student = findStudent(options.students, values.studentName || '');
     const studentId = student?.id || '';
     const studentName = student?.fullName || values.studentName || `سجل مستورد ${index + 1}`;
-    const grade = student?.classGrade || values.grade || '';
-    const section = student?.section || values.section || '';
+
+    // The official Word templates use one "الصف والشعبة" cell; split it.
+    let grade = student?.classGrade || values.grade || '';
+    let section = student?.section || values.section || '';
+    if (!section && grade) {
+      const split = splitGradeSection(grade);
+      if (split) {
+        grade = split.grade;
+        section = split.section;
+      }
+    }
+
     const guardianPhone = values.guardianPhone || '';
     const address = values.address || '';
     const createdAt = nowIso();

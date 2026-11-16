@@ -20,7 +20,9 @@ import {
 import type { Student, SpecialCaseCategory } from '../types';
 import {
   parseRecordFile,
+  parseDailyActivityFile,
   buildRecords,
+  buildDailyActivityRecords,
   type RecordImportKind,
   type RecordImportResult,
 } from '../lib/recordFileImport';
@@ -77,7 +79,7 @@ const SECTIONS: SectionDef[] = [
   {
     kind: 'counseling',
     title: 'سجل النشاط اليومي والتدوينات',
-    description: 'العنوان، التفاصيل، الإجراء المتخذ، التوصيات.',
+    description: 'ملف Word يحتوي جدول الأنشطة (اليوم، التاريخ، النشاط، المكان، التفاصيل) — سجل لكل يوم.',
     icon: ClipboardList,
     tone: 'text-amber-600 dark:text-amber-400',
     soft: 'bg-amber-50 dark:bg-amber-950/40',
@@ -113,6 +115,23 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
     if (!file) return;
     patch(kind, { fileName: file.name, busy: true, error: undefined, result: undefined, imported: undefined });
     try {
+      if (kind === 'counseling') {
+        // Daily-activity files are tables: one record per day, activities inside.
+        const { days, warnings } = await parseDailyActivityFile(file);
+        const records = buildDailyActivityRecords(days);
+        const activityCount = days.reduce((sum, day) => sum + day.activities.length, 0);
+        const result: RecordImportResult = {
+          kind,
+          records,
+          recognized: activityCount,
+          totalFields: activityCount,
+          warnings,
+          detail: `${days.length} ${days.length === 1 ? 'يوم' : 'أيام'} · ${activityCount} نشاطاً`,
+        };
+        patch(kind, { busy: false, result });
+        return;
+      }
+
       const maps = await parseRecordFile(file);
       const result = buildRecords(kind, maps, { students, category });
       patch(kind, { busy: false, result });
@@ -230,7 +249,9 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
                       <span className="font-mono text-[9.5px]" dir="ltr">{state.fileName}</span>
                       {state.result && (
                         <span className="text-sec">
-                          {state.result.records.length} سجل · حقول متعرّف عليها {state.result.recognized} من {state.result.totalFields}
+                          {state.result.detail
+                            ? state.result.detail
+                            : `${state.result.records.length} سجل · حقول متعرّف عليها ${state.result.recognized} من ${state.result.totalFields}`}
                         </span>
                       )}
                     </p>

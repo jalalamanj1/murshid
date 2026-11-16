@@ -1111,7 +1111,37 @@ export default function App() {
       case 'counseling':
       default: {
         const imported = result.records as CounselingRecord[];
-        const updated = [...imported, ...records];
+        let updated = [...records];
+        for (const rec of imported) {
+          if (rec.recordType === 'DAILY_ACTIVITY_PLAN') {
+            const index = updated.findIndex(
+              (r) => r.recordType === 'DAILY_ACTIVITY_PLAN' && r.date === rec.date
+            );
+            if (index >= 0) {
+              const existing = updated[index];
+              const existingActivities = existing.activities || [];
+              const merged = [...existingActivities, ...(rec.activities || [])].map((activity, order) => ({
+                ...activity,
+                displayOrder: order,
+              }));
+              updated[index] = {
+                ...existing,
+                description: merged
+                  .map(
+                    (activity, order) =>
+                      `النشاط (${order + 1}): ${activity.activity || 'غير محدد'}\n` +
+                      `المكان: ${activity.location || 'غير محدد'}\n` +
+                      `التفاصيل: ${activity.details || 'بدون تفاصيل'}`
+                  )
+                  .join('\n\n--------------------------------\n\n'),
+                activities: merged,
+                updatedAt: new Date().toISOString(),
+              };
+              continue;
+            }
+          }
+          updated = [rec, ...updated];
+        }
         setRecords(updated);
         saveRecords(updated);
         break;

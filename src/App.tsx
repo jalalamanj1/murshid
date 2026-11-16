@@ -68,6 +68,7 @@ import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
 import RecordCoversView from './components/RecordCoversView';
 import ExportSection from './components/ExportSection';
 import SettingsView from './components/SettingsView';
+import UpdatePrompt from './components/UpdatePrompt';
 import type { RecordImportResult } from './lib/recordFileImport';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
 import {
@@ -1166,6 +1167,7 @@ export default function App() {
       >
         {renderActiveModuleContent()}
       </DesktopWindow>
+      <UpdatePrompt />
     </>
   );
 }

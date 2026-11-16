@@ -991,6 +991,22 @@ ipcMain.handle('update:install', async () => {
   }
 });
 
+ipcMain.handle('update:defer', async () => {
+  try {
+    return updateManager.deferUpdate();
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('update:state', async () => {
+  try {
+    return updateManager.getUpdateState();
+  } catch (err) {
+    return { status: 'none', error: err.message };
+  }
+});
+
 ipcMain.handle('app:version', () => app.getVersion());
 
 /**

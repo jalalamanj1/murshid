@@ -60,6 +60,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Auto-updater ─────────────────────────────────────────────────
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
+  deferUpdate: () => ipcRenderer.invoke('update:defer'),
+  getUpdateState: () => ipcRenderer.invoke('update:state'),
   onUpdateStatus: (callback) => {
     ipcRenderer.on('update:status', (_e, data) => callback({ status: data.status, version: data.version }));
     ipcRenderer.on('update:progress', (_e, data) => callback({ status: 'progress', percent: data.percent }));

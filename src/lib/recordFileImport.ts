@@ -173,26 +173,115 @@ function tableToMaps(table: DocxTable): LabelMap[] {
   }
 
   const map: LabelMap = {};
-  for (const row of rows) {
-    for (let i = 0; i < row.length; i += 1) {
-      const cell = row[i];
-      if (!cell) continue;
-      const next = row[i + 1];
-      if (endsWithLabelColon(cell)) {
+  const nonEmpty = (row: string[]) =>
+    row.map((cell, index) => ({ cell, index })).filter((entry) => entry.cell);
+
+  for (let r = 0; r < rows.length; r += 1) {
+    const cells = nonEmpty(rows[r]);
+
+    for (let i = 0; i < cells.length; i += 1) {
+      const { cell } = cells[i];
+      const next = cells[i + 1];
+      const afterNext = cells[i + 2];
+
+      // Layout: label | ":" | value
+      if (next && /^[:：]$/.test(next.cell)) {
         const label = clean(cell.replace(/[:：]\s*$/, ''));
-        if (label) map[label] = next && !endsWithLabelColon(next) ? next : '';
-        if (next && !endsWithLabelColon(next)) i += 1;
-      } else if (next !== undefined && endsWithLabelColon(next)) {
-        // value written before its label — ignore, the label iteration handles it
+        if (label) map[label] = afterNext ? afterNext.cell : '';
+        i += afterNext ? 2 : 1;
         continue;
       }
+
+      if (!endsWithLabelColon(cell)) {
+        // Some official tables put a bare label in its own row (no colon) and
+        // the value in the row directly below it.
+        if (cells.length === 1) {
+          const belowCells = nonEmpty(rows[r + 1] || []);
+          if (
+            belowCells.length === 1 &&
+            !endsWithLabelColon(belowCells[0].cell) &&
+            !/^[:：]$/.test(belowCells[0].cell) &&
+            clean(cell).length >= 3
+          ) {
+            map[clean(cell)] = belowCells[0].cell;
+          }
+        }
+        continue;
+      }
+
+      let label = clean(cell.replace(/[:：]\s*$/, ''));
+      let value = '';
+
+      if (next && !endsWithLabelColon(next.cell) && !/^[:：]$/.test(next.cell)) {
+        value = next.cell;
+        i += 1;
+      } else if (next && endsWithLabelColon(next.cell) && afterNext && !endsWithLabelColon(afterNext.cell)) {
+        // Two labels on one row, e.g. "مستوى الطالب العلمي :" "قبل الفقدان :" "value"
+        label = `${label} ${clean(next.cell.replace(/[:：]\s*$/, ''))}`;
+        value = afterNext.cell;
+        i += 2;
+      } else if (cells.length === 1) {
+        // Merged-cell forms put the value on the next row.
+        for (let below = r + 1; below < rows.length; below += 1) {
+          const belowCells = nonEmpty(rows[below]);
+          if (belowCells.length === 0) continue;
+          const candidate = belowCells[0].cell;
+          if (endsWithLabelColon(candidate) || /^[:：]$/.test(candidate)) break;
+          value = candidate;
+          break;
+        }
+      }
+
+      if (label) map[label] = value;
     }
   }
   return Object.keys(map).length > 0 ? [map] : [];
 }
 
+/** One merged label map for a whole table (used for multi-table records). */
+function tableToSingleMap(table: DocxTable): LabelMap {
+  const merged: LabelMap = {};
+  for (const map of tableToMaps(table)) Object.assign(merged, map);
+  return merged;
+}
+
+const hasLabel = (map: LabelMap, names: string[]) => {
+  const wanted = names.map((name) => normalizeHeader(name));
+  return Object.keys(map).some((key) => wanted.includes(normalizeHeader(key)));
+};
+
+/**
+ * A case study is written across many tables (identity, referral, goals,
+ * follow-ups...). Group them into one record per case instead of one per table.
+ * A new case starts when a table carries the student identity again.
+ */
+function groupCaseStudyMaps(blocks: DocxBlock[]): LabelMap[] {
+  const groups: LabelMap[] = [];
+  let current: LabelMap | null = null;
+
+  for (const block of blocks) {
+    if (block.type !== 'table') continue;
+    const map = tableToSingleMap(block.table);
+    if (Object.keys(map).length === 0) continue;
+
+    const startsNewCase = hasLabel(map, ['رمز الطالب']);
+    const hasStudent = hasLabel(map, ['اسم الطالب', 'الطالب', 'اسم الطالبة']);
+    const currentHasStudent = current ? hasLabel(current, ['اسم الطالب', 'الطالب', 'اسم الطالبة']) : false;
+
+    if (!current || startsNewCase || (hasStudent && currentHasStudent)) {
+      current = {};
+      groups.push(current);
+    }
+    for (const [label, value] of Object.entries(map)) {
+      if (!current[label]) current[label] = value;
+    }
+  }
+
+  return groups;
+}
+
 /** Read any supported file into one label map per record. */
-export async function parseRecordFile(file: File): Promise<LabelMap[]> {
+export async function parseRecordFile(file: File, kind?: RecordImportKind): Promise<LabelMap[]> {
   const name = file.name.toLowerCase();
 
   if (name.endsWith('.docx')) {
@@ -200,6 +289,12 @@ export async function parseRecordFile(file: File): Promise<LabelMap[]> {
     const paragraphMap = textToLabelMap(
       blocks.filter((b) => b.type === 'paragraph').map((b) => b.text).join('\n')
     );
+
+    // A case study spans several tables; every other register uses one table
+    // per record (or one row per student).
+    if (kind === 'caseStudy') {
+      return groupCaseStudyMaps(blocks).map((map) => ({ ...paragraphMap, ...map }));
+    }
 
     const maps: LabelMap[] = [];
     for (const block of blocks) {
@@ -640,8 +735,14 @@ const PARENT_LOSS_SPECS: FieldSpec[] = [
   { key: 'livesWithOther', labels: ['أخرى (يعيش مع)'] },
   { key: 'guardianName', labels: ['اسم ولي الأمر', 'ولي الأمر'] },
   { key: 'guardianPhoneField', labels: ['رقم الهاتف', 'هاتف ولي الأمر'] },
-  { key: 'academicLevelBeforeLoss', labels: ['المستوى العلمي قبل الفقدان'] },
-  { key: 'academicLevelAfterLoss', labels: ['المستوى العلمي بعد الفقدان'] },
+  {
+    key: 'academicLevelBeforeLoss',
+    labels: ['المستوى العلمي قبل الفقدان', 'مستوى الطالب العلمي قبل الفقدان', 'قبل الفقدان'],
+  },
+  {
+    key: 'academicLevelAfterLoss',
+    labels: ['المستوى العلمي بعد الفقدان', 'مستوى الطالب العلمي بعد الفقدان', 'بعد الفقدان'],
+  },
   { key: 'studentBehavior', labels: ['سلوك الطالب ومواظبته', 'سلوك الطالب', 'المواظبة'] },
   { key: 'additionalNotes', labels: ['ملاحظات إضافية', 'ملاحظات'] },
 ];
@@ -664,7 +765,8 @@ const CASE_STUDY_SPECS: FieldSpec[] = [
   { key: 'studentName', labels: ['اسم الطالب', 'الطالب'] },
   { key: 'referralSource', labels: ['مصدر الإحالة', 'جهة الإحالة'] },
   { key: 'caseDate', labels: ['تاريخ الحالة', 'التاريخ'] },
-  { key: 'caseTypes', labels: ['نوع الحالة', 'أنواع الحالة', 'المشكلة'] },
+  { key: 'caseDay', labels: ['اليوم'] },
+  { key: 'caseTypes', labels: ['نوع الحالة', 'أنواع الحالة', 'النوع', 'المشكلة'] },
   { key: 'familyCount', labels: ['عدد أفراد الأسرة'] },
   { key: 'siblingsCount', labels: ['عدد الإخوة'] },
   { key: 'birthOrder', labels: ['ترتيب الطالب بين إخوته', 'الترتيب بين الإخوة'] },
@@ -672,7 +774,7 @@ const CASE_STUDY_SPECS: FieldSpec[] = [
   { key: 'studentCode', labels: ['رمز الطالب'] },
   { key: 'parentCode', labels: ['رمز ولي الأمر'] },
   { key: 'fatherJobTitle', labels: ['مهنة الأب'] },
-  { key: 'sessionsTaken', labels: ['عدد الجلسات', 'عدد الجلسات التي استغرقتها الحالة'] },
+  { key: 'sessionsTaken', labels: ['عدد الجلسات', 'عدد الجلسات التي إستغرقتها الحالة'] },
 ];
 
 const SPECIAL_CASE_SPECS: FieldSpec[] = [
@@ -681,7 +783,7 @@ const SPECIAL_CASE_SPECS: FieldSpec[] = [
   { key: 'talentType', labels: ['نوع التفوق أو الموهبة', 'نوع الموهبة', 'الموهبة'] },
   { key: 'talentTypeOther', labels: ['أخرى (الموهبة)'] },
   { key: 'counselorServices', labels: ['الخدمات التي قدمها المرشد التربوي', 'الخدمات المقدمة'] },
-  { key: 'careerGuidance', labels: ['التوجيه المهني'] },
+  { key: 'careerGuidance', labels: ['التوجيه المهني', 'التوجيه المهني الذي يتلائم مع التفوق أو الموهبة'] },
   { key: 'studentProblems', labels: ['المشكلات التي يعاني منها الطالب', 'المشكلات'] },
   { key: 'peerBehavior', labels: ['السلوك التوافقي للطالب مع أقرانه', 'السلوك مع الأقران'] },
   { key: 'delayType', labels: ['نوع التأخر'] },
@@ -825,7 +927,7 @@ export function buildRecords(
           updatedAt: createdAt,
           referralSource: values.referralSource || '',
           caseDate: values.caseDate || '',
-          caseDay: '',
+          caseDay: values.caseDay || '',
           caseTypes: values.caseTypes ? values.caseTypes.split(/[،,؛;]+/).map(clean).filter(Boolean) : [],
           familyCount: values.familyCount || '',
           siblingsCount: values.siblingsCount || '',

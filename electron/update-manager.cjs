@@ -1,5 +1,7 @@
 const { autoUpdater } = require('electron-updater');
-const { BrowserWindow } = require('electron');
+const { app } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
 // ── Updater hardening ────────────────────────────────────────────────
 // Differential updates need the *previous* release's .blockmap to be present
@@ -11,13 +13,85 @@ autoUpdater.autoDownload = false; // downloads are driven (and retried) below
 
 const DOWNLOAD_ATTEMPTS = 6;
 const RETRY_DELAY_MS = 5000;
+const DAY_MS = 24 * 60 * 60 * 1000;      // grace period before the forced update
+const DEFER_MS = 6 * 60 * 60 * 1000;      // do not nag again for 6 hours
+const ENFORCE_INTERVAL_MS = 60 * 1000;    // deadline check
+const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // background re-check
 
 let _mainWindow = null;
 let _checkDone = false;
 let _updateAvailable = false;
-let _manualMode = false;
 let _eventsRegistered = false;
 let _downloading = false;
+let _downloaded = false;
+let _forcePrompt = false;
+let _state = null;
+let _statePath = null;
+let _enforceTimer = null;
+
+function statePath() {
+  if (_statePath) return _statePath;
+  try {
+    _statePath = path.join(app.getPath('userData'), 'pending-update.json');
+  } catch {
+    _statePath = path.join(process.cwd(), 'pending-update.json');
+  }
+  return _statePath;
+}
+
+function loadState() {
+  if (_state) return _state;
+  try {
+    _state = JSON.parse(fs.readFileSync(statePath(), 'utf8'));
+  } catch {
+    _state = null;
+  }
+  return _state;
+}
+
+function saveState() {
+  if (!_state) return;
+  try {
+    fs.writeFileSync(statePath(), JSON.stringify(_state));
+  } catch (err) {
+    console.error('[Update] Could not save pending update state:', err.message);
+  }
+}
+
+function clearState() {
+  _state = null;
+  try {
+    fs.unlinkSync(statePath());
+  } catch {}
+}
+
+/** True when the stored update is the version that is already running. */
+function stateIsCurrent(state) {
+  try {
+    return Boolean(state?.version) && state.version === app.getVersion();
+  } catch {
+    return false;
+  }
+}
+
+function deadlineOf(state) {
+  return state && state.firstSeenAt ? state.firstSeenAt + DAY_MS : 0;
+}
+
+function sendUpdateAvailable(version) {
+  const state = loadState();
+  const deadline = deadlineOf(state);
+  const dismissedUntil = state?.dismissedUntil || 0;
+  const installRequested = Boolean(state?.installRequested);
+  const shouldPrompt = _forcePrompt || installRequested || Date.now() >= dismissedUntil;
+
+  if (!shouldPrompt) return;
+  sendToRenderer('update:status', {
+    status: _downloaded ? 'downloaded' : 'available',
+    version,
+    deadline,
+  });
+}
 
 /**
  * Download the update, retrying on failure. GitHub occasionally serves a 404
@@ -48,13 +122,49 @@ async function downloadWithRetry() {
 
 function surfaceUpdateError(message) {
   _checkDone = true;
-  if (_manualMode) {
-    sendToRenderer('update:error', { error: message });
-  } else if (_mainWindow && !_mainWindow.isDestroyed()) {
-    _mainWindow.webContents.executeJavaScript(`
-      var s = document.getElementById('update-status');
-      if (s) s.textContent = 'تعذر التحقق من التحديثات: ${String(message).replace(/'/g, "\\'")}';
-    `).catch(() => {});
+  sendToRenderer('update:error', { error: message });
+}
+
+/** Install when downloaded and either requested now or past the 24h deadline. */
+function maybeInstall(force = false) {
+  const state = loadState();
+  if (stateIsCurrent(state)) {
+    clearState();
+    return false;
+  }
+  if (!_downloaded) return false;
+  const expired = state ? Date.now() >= deadlineOf(state) : true;
+  if (force || state?.installRequested || expired) {
+    console.log('[Update] Installing update and restarting…');
+    setTimeout(() => {
+      try {
+        autoUpdater.quitAndInstall(true, true);
+      } catch (err) {
+        console.error('[Update] quitAndInstall failed:', err.message);
+      }
+    }, 400);
+    return true;
+  }
+  return false;
+}
+
+/** Runs once a minute: forces the update when the grace period is over. */
+function enforceDeadline() {
+  const state = loadState();
+  if (!state || !state.version) return;
+  if (stateIsCurrent(state)) {
+    clearState();
+    return;
+  }
+
+  if (Date.now() < deadlineOf(state)) return;
+
+  if (_downloaded) {
+    maybeInstall(true);
+  } else if (!_downloading) {
+    // The user kept the app open past the 24h window: fetch it now so the
+    // forced install can complete as soon as the download ends.
+    autoUpdater.checkForUpdates().catch(() => {});
   }
 }
 
@@ -64,49 +174,59 @@ function registerEvents() {
 
   autoUpdater.on('update-available', (info) => {
     _updateAvailable = true;
+    _checkDone = true;
     console.log('[Update] New version available:', info.version);
-    if (_manualMode) {
-      sendToRenderer('update:status', { status: 'available', version: info.version });
-    } else {
-      showForceUpdateScreen(info.version);
+
+    const state = loadState();
+    if (!state || state.version !== info.version) {
+      _state = {
+        version: info.version,
+        firstSeenAt: Date.now(),
+        installRequested: false,
+        dismissedUntil: 0,
+      };
+      saveState();
     }
+
+    sendUpdateAvailable(info.version);
     downloadWithRetry().catch((err) => surfaceUpdateError(err.message));
   });
 
   autoUpdater.on('update-not-available', () => {
     console.log('[Update] No updates available.');
     _checkDone = true;
-    if (_manualMode) {
-      sendToRenderer('update:status', { status: 'up-to-date' });
-    }
+    clearState();
+    sendToRenderer('update:status', { status: 'up-to-date' });
   });
 
   autoUpdater.on('checking-for-update', () => {
     console.log('[Update] Checking for updates...');
-    if (_manualMode) {
-      sendToRenderer('update:status', { status: 'checking' });
-    }
+    sendToRenderer('update:status', { status: 'checking' });
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    const pct = Math.round(progress.percent);
-    if (_manualMode) {
-      sendToRenderer('update:progress', { percent: pct, bytesPerSecond: progress.bytesPerSecond, total: progress.total, transferred: progress.transferred });
-    } else if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.executeJavaScript(`
-        document.getElementById('update-progress').textContent = '${pct}%';
-        document.getElementById('update-bar').style.width = '${pct}%';
-      `).catch(() => {});
-    }
+    sendToRenderer('update:progress', {
+      percent: Math.round(progress.percent),
+      bytesPerSecond: progress.bytesPerSecond,
+      total: progress.total,
+      transferred: progress.transferred,
+    });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
     console.log('[Update] Downloaded version', info.version);
-    if (_manualMode) {
-      sendToRenderer('update:status', { status: 'downloaded', version: info.version });
-    } else {
-      autoUpdater.quitAndInstall(true, true);
+    _downloaded = true;
+    const state = loadState();
+    if (state) {
+      state.downloadedAt = Date.now();
+      saveState();
     }
+    sendToRenderer('update:status', {
+      status: 'downloaded',
+      version: info.version,
+      deadline: deadlineOf(state),
+    });
+    maybeInstall();
   });
 
   autoUpdater.on('error', (err) => {
@@ -126,65 +246,64 @@ function sendToRenderer(channel, data) {
 
 function setWindow(win) {
   _mainWindow = win;
+  loadState();
   registerEvents();
+  if (!_enforceTimer) {
+    _enforceTimer = setInterval(enforceDeadline, ENFORCE_INTERVAL_MS);
+  }
 }
 
+function getUpdateState() {
+  const state = loadState();
+  if (!state || !state.version || stateIsCurrent(state)) {
+    if (state) clearState();
+    return { status: 'none' };
+  }
+  return {
+    status: _downloaded ? 'downloaded' : _updateAvailable ? 'available' : 'pending',
+    version: state.version,
+    deadline: deadlineOf(state),
+    installRequested: Boolean(state.installRequested),
+    shouldPrompt:
+      Boolean(state.installRequested) ||
+      Date.now() >= (state.dismissedUntil || 0),
+  };
+}
+
+/** Manual check from Settings: always show the prompt if an update is found. */
 function checkForUpdates() {
-  _manualMode = true;
+  _forcePrompt = true;
   autoUpdater.checkForUpdates().catch((err) => {
     console.error('[Update] Manual check failed:', err.message);
     sendToRenderer('update:error', { error: err.message });
   });
 }
 
+/** "تحديث الآن": install as soon as the download is ready. */
 function installUpdate() {
-  autoUpdater.quitAndInstall(true, true);
+  const state = loadState();
+  if (state) {
+    state.installRequested = true;
+    state.dismissedUntil = 0;
+    saveState();
+  }
+  if (_downloaded) {
+    maybeInstall(true);
+    return;
+  }
+  if (!_downloading) {
+    downloadWithRetry().catch((err) => surfaceUpdateError(err.message));
+  }
 }
 
-function startStartupCheck() {
-  _manualMode = false;
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch((err) => {
-      console.error('[Update] Check failed:', err.message);
-      _checkDone = true;
-    });
-  }, 2000);
-}
-
-function showForceUpdateScreen(version) {
-  if (!_mainWindow || _mainWindow.isDestroyed()) return;
-
-  const html = `
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#0f172a;color:#f1f5f9;display:flex;align-items:center;justify-content:center;min-height:100vh;direction:rtl}
-.container{text-align:center;max-width:480px;padding:40px}
-.icon{font-size:64px;margin-bottom:20px}
-h1{font-size:22px;margin-bottom:8px}
-p{font-size:14px;color:#94a3b8;margin-bottom:24px;line-height:1.7}
-.progress-bar{width:100%;height:8px;background:#1e293b;border-radius:4px;overflow:hidden;margin-bottom:8px}
-.progress-fill{height:100%;background:#3b82f6;border-radius:4px;width:0%;transition:width .3s}
-.progress-text{font-size:12px;color:#64748b}
-.status{font-size:11px;color:#64748b;margin-top:16px}
-</style>
-</head>
-<body>
-<div class="container">
-<div class="icon">⬇️</div>
-<h1>يتوفر تحديث جديد للبرنامج</h1>
-<p>الإصدار ${version} متاح للتحميل. سيتم تنزيل التحديث وتثبيته تلقائياً.<br>الرجاء الانتظار حتى اكتمال العملية.</p>
-<div class="progress-bar"><div id="update-bar" class="progress-fill"></div></div>
-<div id="update-progress" class="progress-text">جاري التحميل...</div>
-<div id="update-status" class="status"></div>
-</div>
-</body>
-</html>`;
-
-  _mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+/** "لاحقاً": hide the prompt, but the 24h deadline keeps running. */
+function deferUpdate() {
+  const state = loadState();
+  if (!state) return { ok: true };
+  const deadline = deadlineOf(state);
+  state.dismissedUntil = Math.min(deadline, Date.now() + DEFER_MS);
+  saveState();
+  return { ok: true, deadline };
 }
 
 function isUpdateAvailable() {
@@ -195,9 +314,40 @@ async function waitForCheck(timeoutMs = 15000) {
   const start = Date.now();
   while (!_checkDone && !_updateAvailable) {
     if (Date.now() - start > timeoutMs) break;
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 100));
   }
   return !_updateAvailable;
 }
 
-module.exports = { setWindow, isUpdateAvailable, waitForCheck, checkForUpdates, installUpdate, startStartupCheck };
+function startStartupCheck() {
+  const state = loadState();
+
+  // If a previous run was already past the grace period, do not wait 2 seconds.
+  const expired = state ? Date.now() >= deadlineOf(state) : false;
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error('[Update] Check failed:', err.message);
+      _checkDone = true;
+    });
+  }, expired ? 500 : 2000);
+
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, CHECK_INTERVAL_MS);
+
+  if (!_enforceTimer) {
+    _enforceTimer = setInterval(enforceDeadline, ENFORCE_INTERVAL_MS);
+  }
+}
+
+module.exports = {
+  setWindow,
+  isUpdateAvailable,
+  waitForCheck,
+  checkForUpdates,
+  installUpdate,
+  deferUpdate,
+  getUpdateState,
+  startStartupCheck,
+};

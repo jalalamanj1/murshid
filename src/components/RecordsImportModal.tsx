@@ -132,7 +132,7 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
         return;
       }
 
-      const maps = await parseRecordFile(file);
+      const maps = await parseRecordFile(file, kind);
       const result = buildRecords(kind, maps, { students, category });
       patch(kind, { busy: false, result });
     } catch (err) {

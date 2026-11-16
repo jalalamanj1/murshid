@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Student, CounselorProfile, CounselingRecord } from '../types';
 import { GetGradesFromProfile, normalizeClassGrade, normalizeExcelDate, splitClassGrade } from '../lib/gradeService';
+import { normalizeHeader } from '../lib/excelImporter';
 import { academicYear, toLatinDigits } from '../lib/format';
 
 // Helper: display birthDate — if it's an Excel serial number string, convert it
@@ -30,6 +31,7 @@ interface StudentManagementViewProps {
   onImportStudents?: (students: Student[]) => void;
   onUpdateStudent: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
+  onDeleteStudents?: (ids: string[]) => void;
   onOpenRecords?: () => void;
 }
 
@@ -37,12 +39,14 @@ type SortField = 'fullName' | 'classGrade' | 'birthDate' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 export default function StudentManagementView({
-  students, records, profile, onAddStudent, onImportStudents, onUpdateStudent, onDeleteStudent, onOpenRecords
+  students, records, profile, onAddStudent, onImportStudents, onUpdateStudent, onDeleteStudent, onDeleteStudents, onOpenRecords
 }: StudentManagementViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('fullName');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filterGrade, setFilterGrade] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [importNotice, setImportNotice] = useState('');
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -115,6 +119,30 @@ export default function StudentManagementView({
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDir('asc'); }
+  };
+
+  // Keep the selection valid when students are imported, edited or deleted.
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => students.some(student => student.id === id)));
+  }, [students]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]));
+  };
+
+  const allFilteredSelected =
+    filteredStudents.length > 0 && filteredStudents.every(student => selectedIds.includes(student.id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allFilteredSelected ? [] : filteredStudents.map(student => student.id));
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`حذف ${toLatinDigits(selectedIds.length)} طالباً/طالبة؟ لا يمكن التراجع عن الحذف.`)) return;
+    if (onDeleteStudents) onDeleteStudents(selectedIds);
+    else selectedIds.forEach(id => onDeleteStudent(id));
+    setSelectedIds([]);
   };
 
   const resetForm = () => {
@@ -207,8 +235,32 @@ export default function StudentManagementView({
       const parts = splitClassGrade(s.classGrade);
       return { ...s, classGrade: parts.grade, section: parts.section || undefined };
     });
-    if (onImportStudents) onImportStudents(normalized);
-    else normalized.forEach(s => onAddStudent(s));
+
+    // Skip students that already exist or repeat inside the same file.
+    const identityOf = (s: Student) =>
+      [s.fullName, s.classGrade, s.section || '', s.birthDate || '']
+        .map(normalizeHeader)
+        .join('|');
+
+    const seen = new Set(students.map(identityOf));
+    const fresh: Student[] = [];
+    for (const student of normalized) {
+      const key = identityOf(student);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      fresh.push(student);
+    }
+
+    const skipped = normalized.length - fresh.length;
+    setImportNotice(
+      skipped > 0
+        ? `تم استيراد ${toLatinDigits(fresh.length)} طالباً وتجاهل ${toLatinDigits(skipped)} سجلاً مكرراً.`
+        : `تم استيراد ${toLatinDigits(fresh.length)} طالباً.`
+    );
+
+    if (fresh.length === 0) return;
+    if (onImportStudents) onImportStudents(fresh);
+    else fresh.forEach(s => onAddStudent(s));
   };
 
   const handleExportStudentData = async (student: Student) => {
@@ -352,6 +404,19 @@ export default function StudentManagementView({
         </div>
       </div>
 
+      {importNotice && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-border-color bg-primary-bg px-4 py-2.5">
+          <p className="text-[11px] font-bold text-main">{importNotice}</p>
+          <button
+            type="button"
+            onClick={() => setImportNotice('')}
+            className="text-[10px] font-bold text-muted hover:text-main"
+          >
+            إخفاء
+          </button>
+        </div>
+      )}
+
       <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -367,11 +432,45 @@ export default function StudentManagementView({
         </div>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-primary-border bg-primary-bg px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11px] font-black text-main">
+            تم تحديد {toLatinDigits(selectedIds.length)} من الطلبة
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-[11px] font-bold text-white transition-opacity hover:opacity-90"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              حذف المحدد
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="rounded-lg border border-border-color bg-card px-3 py-1.5 text-[11px] font-bold text-sec transition-colors hover:bg-hover"
+            >
+              إلغاء التحديد
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card bg-white dark:bg-[#1e293b] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-right text-xs">
             <thead className="bg-slate-50 dark:bg-[#0f172a] text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
               <tr>
+                <th className="p-2 w-9">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="تحديد كل الطلبة"
+                    className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                  />
+                </th>
                 <th className="p-3 cursor-pointer hover:text-office-blue transition-colors" onClick={() => handleSort('fullName')}><span className="flex items-center gap-1">اسم الطالب<ArrowUpDown className="w-3 h-3" /></span></th>
                 <th className="p-3 cursor-pointer hover:text-office-blue transition-colors" onClick={() => handleSort('classGrade')}><span className="flex items-center gap-1">الصف<ArrowUpDown className="w-3 h-3" /></span></th>
                 <th className="p-3 cursor-pointer hover:text-office-blue transition-colors" onClick={() => handleSort('birthDate')}><span className="flex items-center gap-1">تاريخ الميلاد<ArrowUpDown className="w-3 h-3" /></span></th>
@@ -382,12 +481,21 @@ export default function StudentManagementView({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredStudents.length === 0 ? (
 
-                <tr><td colSpan={5} className="p-12 text-center">
+                <tr><td colSpan={6} className="p-12 text-center">
                   <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                   <p className="text-xs font-bold text-slate-400 dark:text-slate-500">{searchTerm || filterGrade ? 'لا توجد نتائج' : 'لا يوجد طالب مسجل'}</p>
                 </td></tr>
               ) : filteredStudents.map(student => (
                 <tr key={student.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-950/10 transition-colors">
+                  <td className="p-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(student.id)}
+                      onChange={() => toggleSelected(student.id)}
+                      aria-label={`تحديد ${student.fullName}`}
+                      className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                    />
+                  </td>
                   <td className="p-3">
                     <div className="space-y-0.5">
                       <span className="font-bold text-slate-900 dark:text-slate-100 block">{student.fullName}</span>
@@ -405,7 +513,7 @@ export default function StudentManagementView({
                       <button onClick={() => handleViewStudent(student)} className="p-1.5 text-slate-400 hover:text-office-blue dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="عرض الملف"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => handleStartEdit(student)} className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="تعديل"><Edit className="w-4 h-4" /></button>
                       <button onClick={() => handleExportStudentData(student)} className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="تصدير"><Download className="w-4 h-4" /></button>
-                      <button onClick={() => { if (confirm(`حذف الطالب (${student.fullName})؟`)) onDeleteStudent(student.id); }} className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50/50 dark:hover:bg-rose-950/20 cursor-pointer transition-colors" title="حذف"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => { if (confirm(`حذف الطالب (${student.fullName})؟`)) { onDeleteStudent(student.id); setSelectedIds(prev => prev.filter(id => id !== student.id)); } }} className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50/50 dark:hover:bg-rose-950/20 cursor-pointer transition-colors" title="حذف"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>

@@ -449,6 +449,14 @@ export default function App() {
               });
             }}
             onDeleteStudent={handleDeleteStudent}
+            onDeleteStudents={(ids) => {
+              const remove = new Set(ids);
+              setStudents(prev => {
+                const updated = prev.filter(student => !remove.has(student.id));
+                saveStudents(updated);
+                return updated;
+              });
+            }}
             onOpenRecords={() => setActiveModule('RECORDS')}
           />
         );

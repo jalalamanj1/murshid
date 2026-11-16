@@ -1120,7 +1120,15 @@ export default function App() {
             if (index >= 0) {
               const existing = updated[index];
               const existingActivities = existing.activities || [];
-              const merged = [...existingActivities, ...(rec.activities || [])].map((activity, order) => ({
+              const seen = new Set(
+                existingActivities.map(
+                  (activity) => `${activity.activity}|${activity.location}|${activity.details}`
+                )
+              );
+              const additions = (rec.activities || []).filter(
+                (activity) => !seen.has(`${activity.activity}|${activity.location}|${activity.details}`)
+              );
+              const merged = [...existingActivities, ...additions].map((activity, order) => ({
                 ...activity,
                 displayOrder: order,
               }));

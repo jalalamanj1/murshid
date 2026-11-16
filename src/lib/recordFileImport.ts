@@ -260,9 +260,12 @@ function pad2(value: string | number): string {
   return String(value).padStart(2, '0');
 }
 
-/** Accept 2026/11/16, 16/11/2026, 16-11-2026 and Arabic digits. */
+/** Accept 2026/11/16, 16 / 11 / 2026, 16-11-2026 and Arabic digits. */
 function normalizeDateValue(raw: string): string {
-  const value = latinize(clean(raw)).replace(/[.،]/g, '/').replace(/-/g, '/');
+  const value = latinize(clean(raw))
+    .replace(/\s+/g, '')
+    .replace(/[.،]/g, '/')
+    .replace(/-/g, '/');
   let match = value.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
   if (match) return `${match[1]}-${pad2(match[2])}-${pad2(match[3])}`;
 
@@ -287,13 +290,59 @@ function weekdayFromDate(iso: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('ar-IQ', { weekday: 'long' });
 }
 
+const WEEKDAYS = [
+  'الأحد',
+  'الاحد',
+  'الاثنين',
+  'الإثنين',
+  'الثلاثاء',
+  'الأربعاء',
+  'الاربعاء',
+  'الخميس',
+  'الجمعة',
+  'السبت',
+];
+
+/**
+ * Read a day and a date out of one piece of text.
+ * Handles separate labels ("اليوم:" + value cells), combined cells
+ * ("اليوم: الأحد   التاريخ: 2026/11/16"), and bare weekday/date cells.
+ */
 function dayAndDateFromText(text: string): { day?: string; date?: string } {
   const result: { day?: string; date?: string } = {};
-  const dayMatch = text.match(/اليوم\s*[:：]?\s*([^\s|]+)/);
-  if (dayMatch) result.day = clean(dayMatch[1]);
-  const dateMatch = text.match(/التاريخ\s*[:：]?\s*([0-9\u0660-\u0669][0-9\u0660-\u0669\/\.\-]*)/);
-  if (dateMatch) result.date = normalizeDateValue(dateMatch[1]);
+  const value = clean(text);
+
+  const labeledDay = value.match(
+    /اليوم\s*[:：]?\s*(الأحد|الاحد|الاثنين|الإثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|السبت)/
+  );
+  if (labeledDay) {
+    result.day = labeledDay[1];
+  } else {
+    // A header cell may hold only the weekday, or the weekday next to the date.
+    const weekday = WEEKDAYS.find((candidate) => value.includes(candidate));
+    if (weekday) result.day = weekday;
+  }
+
+  const datePattern =
+    /([0-9\u0660-\u0669]{1,4})\s*[\/\.\-]\s*([0-9\u0660-\u0669]{1,2})\s*[\/\.\-]\s*([0-9\u0660-\u0669]{1,4})/;
+  const dateMatch = value.match(datePattern);
+  if (dateMatch) result.date = normalizeDateValue(dateMatch[0]);
+
   return result;
+}
+
+/** Day/date written anywhere in a table (header cells, merged cells, values). */
+function dayAndDateFromTable(table: DocxTable): { day: string; date: string } {
+  let day = '';
+  let date = '';
+  for (const row of table.rows) {
+    for (const cell of row) {
+      const found = dayAndDateFromText(cell);
+      if (found.day) day = found.day;
+      if (found.date) date = found.date;
+    }
+  }
+  return { day, date };
 }
 
 function dailyDaysFromTable(table: DocxTable, context: { day: string; date: string }): ParsedDay[] {
@@ -303,7 +352,25 @@ function dailyDaysFromTable(table: DocxTable, context: { day: string; date: stri
   let day = context.day;
   let date = context.date;
 
-  // Day/date cells can sit above the activity header inside the same table.
+  // Day/date cells can sit above the activity header inside the same table,
+  // either as label/value pairs or as one combined cell. Only rows at or above
+  // the header are considered, so activity text can never override the date.
+  const headerRowIndex = rows.findIndex((row) =>
+    row.some((cell) => {
+      const normalized = normalizeHeader(cell);
+      return (
+        normalized.includes('نشاط') ||
+        normalized.includes('فعاليه') ||
+        normalized.includes('فعالية')
+      );
+    })
+  );
+  if (headerRowIndex >= 0) {
+    const fromHeader = dayAndDateFromTable({ rows: rows.slice(0, headerRowIndex + 1) });
+    if (fromHeader.day) day = fromHeader.day;
+    if (fromHeader.date) date = fromHeader.date;
+  }
+
   for (const row of rows) {
     for (let i = 0; i < row.length; i += 1) {
       const label = normalizeHeader(row[i].replace(/[:：]/g, ''));
@@ -322,9 +389,9 @@ function dailyDaysFromTable(table: DocxTable, context: { day: string; date: stri
   const columnOf = (words: string[]) =>
     header.findIndex((cell) => words.some((word) => normalizeHeader(cell).includes(word)));
 
-  const activityColumn = columnOf(['نشاط']);
-  const locationColumn = columnOf(['مكان', 'موقع']);
-  const detailsColumn = columnOf(['تفاصيل', 'اجراء', 'مخرج']);
+  const activityColumn = columnOf(['نشاط', 'فعاليه', 'فعالية']);
+  const locationColumn = columnOf(['مكان', 'موقع', 'قاعه', 'قاعة']);
+  const detailsColumn = columnOf(['تفاصيل', 'اجراء', 'مخرج', 'ملاحظات']);
   const dayColumn = header.findIndex((cell) => normalizeHeader(cell) === 'اليوم');
   const dateColumn = header.findIndex((cell) => normalizeHeader(cell) === 'التاريخ');
 
@@ -416,6 +483,17 @@ export async function parseDailyActivityFile(
         if (found.date) context.date = found.date;
         continue;
       }
+
+      // A header table can carry the date for the activity table that follows.
+      const hasActivityHeader = block.table.rows.some((row) =>
+        row.some((cell) => normalizeHeader(cell).includes('نشاط'))
+      );
+      if (!hasActivityHeader) {
+        const tableContext = dayAndDateFromTable(block.table);
+        if (tableContext.day) context.day = tableContext.day;
+        if (tableContext.date) context.date = tableContext.date;
+      }
+
       collected.push(...dailyDaysFromTable(block.table, context));
     }
   } else if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
@@ -424,24 +502,31 @@ export async function parseDailyActivityFile(
     throw new Error('صيغة الملف غير مدعومة. استخدم DOCX أو XLSX.');
   }
 
-  // Merge tables/pages that describe the same day.
+  // Merge tables/pages that describe the same day. Tables without any day or
+  // date stay separate: each table is its own page/record rather than one blob.
   const merged = new Map<string, ParsedDay>();
-  for (const day of collected) {
-    const key = `${day.date}|${day.day}`;
+  collected.forEach((entry, index) => {
+    const hasIdentity = Boolean(entry.date || entry.day);
+    const key = hasIdentity ? `${entry.date}|${entry.day}` : `table_${index}`;
     const existing = merged.get(key);
-    if (existing) existing.activities.push(...day.activities);
-    else merged.set(key, { ...day, activities: [...day.activities] });
-  }
+    if (existing) existing.activities.push(...entry.activities);
+    else merged.set(key, { ...entry, activities: [...entry.activities] });
+  });
 
+  const missingDateWarnings = new Set<string>();
   const days = Array.from(merged.values()).map((entry) => {
     let date = normalizeDateValue(entry.date) || entry.date;
     if (!date) {
       date = new Date().toISOString().slice(0, 10);
-      warnings.push(`لم يُعثر على تاريخ في أحد الجداول — استُخدم تاريخ اليوم (${date}).`);
+      missingDateWarnings.add(
+        `لم يُعثر على تاريخ في أحد الجداول — استُخدم تاريخ اليوم (${date}) لذلك الجدول.`
+      );
     }
     const day = entry.day || weekdayFromDate(date) || 'غير محدد';
     return { day, date, activities: entry.activities };
   });
+
+  warnings.push(...missingDateWarnings);
 
   if (days.length === 0) {
     warnings.push(

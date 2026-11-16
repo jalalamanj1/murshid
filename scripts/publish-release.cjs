@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const RELEASE_DIR = path.join(ROOT, 'release');
+const RELEASE_DIR = path.join(ROOT, 'release-build');
 const REPO = 'jalalamanj1/Murshid-Releases';
 const TARGET_BRANCH = 'master';
 

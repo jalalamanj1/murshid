@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   purgeLegacyActivationData,
   loadProfile, 
@@ -44,10 +44,11 @@ import {
 
 // Components
 import SplashView from './components/SplashView';
-import LockScreen from './components/LockScreen';
+import ActivationGateView from './components/ActivationGateView';
+import PasscodeLockView from './components/PasscodeLockView';
 import RegistrationView from './components/RegistrationView';
 import DesktopWindow from './components/DesktopWindow';
-import DashboardView from './components/DashboardView';
+import DashboardView from './components/DashboardViewRedesigned';
 import RecordsListView from './components/RecordsListView';
 import StudentManagementView from './components/StudentManagementView';
 import BackupSyncView from './components/BackupSyncView';
@@ -66,8 +67,16 @@ import ParentLossRecordListView from './components/ParentLossRecordListView';
 import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
 import RecordCoversView from './components/RecordCoversView';
 import ExportSection from './components/ExportSection';
-import UpdateSettingsView from './components/UpdateSettingsView';
+import SettingsView from './components/SettingsView';
+import type { RecordImportResult } from './lib/recordFileImport';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
+import {
+  getActivationStatus,
+  submitActivationRequest,
+  type ActivationStatusResult,
+} from './lib/activationManager';
+import { runAutoBackupIfDue } from './lib/backupService';
+import { isAppLockEnabled } from './lib/appLock';
 
 import { 
   Users, 
@@ -83,6 +92,11 @@ import {
 
 export default function App() {
   const [flowStage, setFlowStage] = useState<AppFlowStage>('SPLASH');
+  const [activationStatus, setActivationStatus] = useState<ActivationStatusResult | null>(null);
+  const activationCheckInFlight = useRef(false);
+  const isRegisteredRef = useRef(false);
+  const sessionUnlockedRef = useRef(!isAppLockEnabled());
+
   const [activeModule, setActiveModule] = useState<ActiveModule>('DASHBOARD');
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
@@ -96,9 +110,29 @@ export default function App() {
     isRegistered: false
   });
 
+  useEffect(() => {
+    isRegisteredRef.current = profile.isRegistered;
+  }, [profile.isRegistered]);
+
+  // Automatic local backup: checks once a minute while the app is in use.
+  useEffect(() => {
+    if (flowStage !== 'MAIN') return;
+    let cancelled = false;
+    const tick = () => {
+      if (!cancelled) void runAutoBackupIfDue().catch(() => {});
+    };
+    tick();
+    const timer = setInterval(tick, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [flowStage]);
+
   const [students, setStudents] = useState<Student[]>([]);
   const [records, setRecords] = useState<CounselingRecord[]>([]);
   const [selectedRecordType, setSelectedRecordType] = useState<RecordType | null>(null);
+  const [recordStartInAdd, setRecordStartInAdd] = useState(false);
   const [caseStudies, setCaseStudies] = useState<CaseStudy[]>([]);
   const [caseStudyMode, setCaseStudyMode] = useState<'LIST' | 'CREATE' | 'EDIT'>('LIST');
   const [editingCase, setEditingCase] = useState<CaseStudy | undefined>();
@@ -180,21 +214,94 @@ export default function App() {
     } catch {}
   }, []);
 
-  const handleSplashComplete = () => {
-    setFlowStage('LOCKED');
+  // -----------------------------------------------------------------------
+  // Activation Manager gate
+  // -----------------------------------------------------------------------
+  const checkActivationStatus = useCallback(async () => {
+    if (activationCheckInFlight.current) return;
+    activationCheckInFlight.current = true;
+    try {
+      const status = await getActivationStatus();
+      setActivationStatus(status);
+
+      switch (status.status) {
+        case 'error':
+          // Network/API problems must not lock an already activated install.
+          break;
+        case 'approved':
+          setFlowStage((prev) => {
+            if (prev !== 'SPLASH' && prev !== 'ACTIVATION') return prev;
+            if (isAppLockEnabled() && !sessionUnlockedRef.current) return 'LOCK';
+            return isRegisteredRef.current ? 'MAIN' : 'REGISTRATION';
+          });
+          break;
+        case 'none':
+        case 'pending':
+        case 'rejected':
+        case 'revoked':
+        case 'expired':
+        case 'invalid':
+        default:
+          // Any non-approved state blocks the app and returns to activation.
+          setFlowStage('ACTIVATION');
+          break;
+      }
+    } finally {
+      activationCheckInFlight.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    checkActivationStatus();
+
+    const quick =
+      activationStatus?.status !== 'approved' && activationStatus?.status !== 'error';
+    // Wait quickly for approval / re-approval; once approved, re-check hourly
+    // so a revocation/expiry disables the app automatically.
+    const timer = setInterval(checkActivationStatus, quick ? 5_000 : 60_000);
+
+    const onFocus = () => checkActivationStatus();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') checkActivationStatus();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [checkActivationStatus, activationStatus?.status]);
+
+  const handleSplashComplete = async () => {
+    await checkActivationStatus();
+    // If the status could not be verified (offline/API error) keep the app
+    // blocked on the activation screen instead of entering the workspace.
+    setFlowStage((prev) => (prev === 'SPLASH' ? 'ACTIVATION' : prev));
   };
 
-  const handleUnlocked = () => {
-    if (!profile.isRegistered) {
-      setFlowStage('REGISTRATION');
-    } else {
-      setFlowStage('MAIN');
+  const handleActivationSubmit = async (data: {
+    fullName: string;
+    phone: string;
+    location: string;
+    notes?: string;
+  }) => {
+    const result = await submitActivationRequest(data.fullName, data.phone, data.location, data.notes);
+    if (!result.success) {
+      throw new Error(result.error || 'تعذر إرسال طلب التنشيط.');
     }
+    // Refresh immediately so the UI shows "pending" without any manual action.
+    void checkActivationStatus();
   };
 
   const handleRegistered = (prof: CounselorProfile) => {
     setProfile(prof);
     setFlowStage('MAIN');
+  };
+
+  const handleUnlock = () => {
+    sessionUnlockedRef.current = true;
+    setFlowStage(profile.isRegistered ? 'MAIN' : 'REGISTRATION');
   };
 
   const handleClearStudentsAndCases = () => {
@@ -307,27 +414,9 @@ export default function App() {
               setRecords(updated);
               saveRecords(updated);
             }}
-            onClearStudentsAndCases={handleClearStudentsAndCases}
-            onOpenRecordsForType={(rt) => {
-              if (rt === 'SPECIAL_CASES') {
-                setSpecialCasesFromDashboard(true);
-                setSpecialCaseMode('CATEGORY_SELECT');
-                return;
-              }
-              setActiveModule('RECORDS');
-              setSelectedRecordType(rt);
-              if (rt === 'GROUP_INDIVIDUAL') {
-                setCounselingSessionMode('CREATE');
-              } else if (rt === 'CASE_STUDY') {
-                setCaseStudyMode('CREATE');
-              } else if (rt === 'HEALTH_STATUS') {
-                setHealthRecordMode('CREATE');
-              } else if (rt === 'BEREAVED_STUDENTS') {
-                setParentLossMode('CREATE');
-              } else if (rt === 'HEALTH_KEY_GUIDE') {
-                // Read-only view, no mode needed
-              }
-            }}
+                    onClearStudentsAndCases={handleClearStudentsAndCases}
+            onOpenRecordsForType={openRecordList}
+            onCreateRecordForType={openRecordForm}
           />
         );
 
@@ -426,6 +515,7 @@ export default function App() {
                   setCaseStudies(updated);
                   saveCaseStudies(updated);
                 }}
+                onNew={() => { setEditingCase(undefined); setCaseStudyMode('CREATE'); }}
                 onBack={() => setSelectedRecordType(null)}
               />
             </>
@@ -482,6 +572,7 @@ export default function App() {
                   setCounselingSessions(updated);
                   saveCounselingSessions(updated);
                 }}
+                onNew={() => { setEditingSession(undefined); setCounselingSessionMode('CREATE'); }}
                 onBack={() => setSelectedRecordType(null)}
               />
             </>
@@ -635,6 +726,7 @@ export default function App() {
                   setHealthRecords(updated);
                   saveHealthRecords(updated);
                 }}
+                onNew={() => { setEditingHealthRecord(undefined); setHealthRecordMode('CREATE'); }}
                 onBack={() => {
                   setSelectedRecordType(null);
                   setHealthRecordMode('LIST');
@@ -701,6 +793,7 @@ export default function App() {
                   setParentLossRecords(updated);
                   saveParentLossRecords(updated);
                 }}
+                onNew={() => { setEditingParentLoss(undefined); setParentLossMode('CREATE'); }}
                 onBack={() => {
                   setSelectedRecordType(null);
                   setParentLossMode('LIST');
@@ -761,58 +854,65 @@ export default function App() {
                 setRecords(updated);
                 saveRecords(updated);
               }}
-              onBack={() => setSelectedRecordType(null)}
+              onBack={() => {
+                setSelectedRecordType(null);
+                setRecordStartInAdd(false);
+              }}
+              startInAddForm={recordStartInAdd}
             />
           );
         }
 
         return (
-          <div className="space-y-6">
-            <div className="card animate-fade-in">
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">سجلات</h3>
-              </div>
+          <div className="flex flex-col gap-6">
+            <header>
+              <p className="kicker">السجلات الإرشادية</p>
+              <h1 className="mt-1.5 text-[24px] font-black leading-tight text-main">سجلات المرشد التربوي</h1>
+              <p className="mt-1.5 text-[12px] font-semibold text-sec">
+                سبعة سجلات رسمية — افتح أي سجل لمتابعة بياناته، أو أضف تدويناً جديداً مباشرة.
+              </p>
+            </header>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <section className="overflow-hidden rounded-[14px] border border-border-color bg-card shadow-xs">
+              <ul>
                 {[
-                  { type: 'HEALTH_STATUS', name: 'سجل الحالة الصحية' },
-                  { type: 'SPECIAL_CASES', name: 'سجل الحالات الخاصة' },
-                  { type: 'GROUP_INDIVIDUAL', name: 'سجل الإرشاد الجمعي والفردي' },
-                  { type: 'BEREAVED_STUDENTS', name: 'سجل الطلبة الفاقدين (أحد الوالدين أو كليهما)' },
-                  { type: 'CASE_STUDY', name: 'سجل دراسة الحالة' },
-                  { type: 'HEALTH_KEY_GUIDE', name: 'سجل الدليل (المفتاح) لدراسة الحالة' },
-                  { type: 'DAILY_ACTIVITY_PLAN', name: 'سجل النشاط اليومي' }
-                ].map((item) => {
-                  return (
-                    <div 
-                      key={item.type} 
-                      onClick={() => setSelectedRecordType(item.type as RecordType)}
-                      className="border border-slate-200 dark:border-slate-800 hover:border-office-blue/30 dark:hover:border-office-blue/40 p-3 rounded-xl bg-[#F8F6F0] dark:bg-[#F8F6F0] flex flex-col justify-between gap-2 min-h-[100px] transition-all hover:shadow-xs cursor-pointer group"
-                    >
-                      <span className="text-xs font-black text-main dark:text-slate-100 group-hover:text-office-blue transition-colors leading-snug">{item.name}</span>
-                      <button 
-                        className="text-[10px] font-black text-office-blue dark:text-blue-400 group-hover:underline text-right cursor-pointer flex items-center justify-end gap-1"
+                  { type: 'HEALTH_STATUS', name: 'سجل الحالة الصحية', desc: 'رصد الحالات الصحية ومتابعة العلاج المدرسي.' },
+                  { type: 'SPECIAL_CASES', name: 'سجل الحالات الخاصة', desc: 'متابعة ذوي الاحتياجات الخاصة والحالات الحرجة.' },
+                  { type: 'GROUP_INDIVIDUAL', name: 'سجل الإرشاد الجمعي والفردي', desc: 'توثيق جلسات الدعم والاستشارات الفردية والجماعية.' },
+                  { type: 'BEREAVED_STUDENTS', name: 'سجل الطلبة الفاقدين', desc: 'رعاية الأيتام وفاقدي المعيل ودعمهم المتكامل.' },
+                  { type: 'CASE_STUDY', name: 'سجل دراسة الحالة', desc: 'دراسة معمقة للظواهر السلوكية المعقدة.' },
+                  { type: 'HEALTH_KEY_GUIDE', name: 'سجل الدليل (المفتاح)', desc: 'دليل تصنيف الأمراض وتوصيات المتابعة الوقائية.', readOnly: true },
+                  { type: 'DAILY_ACTIVITY_PLAN', name: 'سجل النشاط اليومي', desc: 'خطة النشاط الإرشادي وتدوين اليوميات التنفيذية.' },
+                ].map((item, index) => (
+                  <li
+                    key={item.type}
+                    onClick={() => openRecordList(item.type as RecordType)}
+                    className="group flex cursor-pointer items-center gap-2 border-b border-divider-color px-4 py-2.5 last:border-0 hover:bg-hover"
+                  >
+                    <span className="num w-5 shrink-0 text-[10px] font-bold text-muted">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="w-[205px] shrink-0 truncate text-[11.5px] font-bold text-main">
+                      {item.name}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[10px] text-muted">{item.desc}</span>
+                    {!item.readOnly && (
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedRecordType(item.type as RecordType);
+                          openRecordForm(item.type as RecordType);
                         }}
+                        className="flex shrink-0 items-center gap-1 rounded-[8px] border border-border-color bg-card px-2.5 py-1.5 text-[10px] font-bold text-primary transition-colors hover:border-primary-border hover:bg-primary-bg"
                       >
-                        <span>فتح السجل وإدارته</span>
-                        <span>←</span>
+                        <Plus className="h-3 w-3" strokeWidth={2.4} />
+                        إضافة
                       </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="card animate-fade-in">
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">سجلات إضافية</h3>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" />
-            </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
         );
 
@@ -820,11 +920,7 @@ export default function App() {
         return <RecordCoversView />;
 
       case 'BACKUP':
-        return (
-          <BackupSyncView
-            onNavigateToStudents={() => setActiveModule('STUDENTS')}
-          />
-        );
+        return <BackupSyncView />;
 
       case 'DRIVE_LETTERS':
         return (
@@ -844,91 +940,19 @@ export default function App() {
 
       case 'SETTINGS':
         return (
-          <div className="card space-y-6">
-            <div className="border-b border-divider-color pb-4">
-              <h3 className="text-base font-bold text-main">إعدادات نظام مرشد</h3>
-              <p className="text-xs text-muted mt-1">تخصيص مسارات الحفظ المحمية ومراجعة تفاصيل ترخيص البرنامج</p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="space-y-1.5 max-w-lg">
-                <label className="form-label">مجلد حفظ السجلات:</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={saveFolder || 'سطح المكتب\\سجلات مرشد (الافتراضي)'}
-                    className="form-input flex-1"
-                  />
-                  <button 
-                    className="btn-secondary !py-1.5 !px-3 text-xs"
-                    onClick={handlePickSaveFolder}
-                  >
-                    تغيير
-                  </button>
-                </div>
-                <p className="text-[10px] text-muted">جميع سجلات التصدير تُحفظ في هذا المسار افتراضياً.</p>
-              </div>
-
-              <div className="space-y-3 max-w-lg">
-                <h4 className="text-xs font-bold text-main">مظهر البرنامج</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => { setThemeState('dark'); persistTheme('dark'); }}
-                    className={`flex items-center justify-center gap-2 rounded-xl border p-3.5 text-xs font-bold transition-all cursor-pointer ${
-                      theme === 'dark'
-                        ? 'bg-primary-bg border-primary text-primary'
-                        : 'bg-card border-border-color text-secondary hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    <span className="w-4 h-4 rounded-md bg-[#0D121A] border border-[#232A34] block" />
-                    داكن
-                  </button>
-                  <button
-                    onClick={() => { setThemeState('light'); persistTheme('light'); }}
-                    className={`flex items-center justify-center gap-2 rounded-xl border p-3.5 text-xs font-bold transition-all cursor-pointer ${
-                      theme === 'light'
-                        ? 'bg-primary-bg border-primary text-primary'
-                        : 'bg-card border-border-color text-secondary hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    <span className="w-4 h-4 rounded-md bg-[#FAFAFA] border border-[#E8E8E8] block" />
-                    فاتح
-                  </button>
-                </div>
-                <p className="text-[10px] text-muted">يُحفظ اختيار المظهر تلقائياً ويُطبَّق عند كل تشغيل.</p>
-              </div>
-
-              <UpdateSettingsView />
-
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-main">حول النظام</h4>
-                <div className="bg-card rounded-xl p-5 border border-border-color">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-main">اسم النظام:</span>
-                      <span className="text-xs text-primary font-bold">Murshid - مرشد</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-main">الإصدار الحالي:</span>
-                      <span className="text-xs font-mono text-muted">v{appVersion}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-main">المطور:</span>
-                      <a
-                        href="https://jalalamanj.online"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:text-primary-hover transition-colors underline decoration-dotted underline-offset-2"
-                      >
-                        Jalal Amanj
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SettingsView
+            profile={profile}
+            appVersion={appVersion}
+            theme={theme}
+            onThemeChange={(next) => {
+              setThemeState(next);
+              persistTheme(next);
+            }}
+            saveFolder={saveFolder}
+            onPickSaveFolder={handlePickSaveFolder}
+            students={students}
+            onImportRecords={handleImportRecordResult}
+          />
         );
 
       default:
@@ -941,8 +965,17 @@ export default function App() {
     return <SplashView onComplete={handleSplashComplete} />;
   }
 
-  if (flowStage === 'LOCKED') {
-    return <LockScreen onUnlock={handleUnlocked} />;
+  if (flowStage === 'ACTIVATION') {
+    return (
+      <ActivationGateView
+        activationStatus={activationStatus}
+        onSubmit={handleActivationSubmit}
+      />
+    );
+  }
+
+  if (flowStage === 'LOCK') {
+    return <PasscodeLockView onUnlock={handleUnlock} />;
   }
 
   if (flowStage === 'REGISTRATION') {
@@ -952,6 +985,7 @@ export default function App() {
   const handleNavigate = (mod: ActiveModule) => {
     // Reset all module-specific state when navigating
     setSelectedRecordType(null);
+    setRecordStartInAdd(false);
     setSpecialCaseMode('LIST');
     setSelectedSpecialCaseCategory(undefined);
     setEditingSpecialCase(undefined);
@@ -985,11 +1019,112 @@ export default function App() {
     } catch {}
   };
 
+  /** Open a record's list without starting the entry form. */
+  const openRecordList = (rt: RecordType) => {
+    setEditingCase(undefined);
+    setEditingSession(undefined);
+    setEditingSpecialCase(undefined);
+    setEditingHealthRecord(undefined);
+    setEditingParentLoss(undefined);
+    setRecordStartInAdd(false);
+    setActiveModule('RECORDS');
+    setSelectedRecordType(rt);
+
+    if (rt === 'SPECIAL_CASES') {
+      setSpecialCasesFromDashboard(false);
+      setSelectedSpecialCaseCategory(undefined);
+      setSpecialCaseMode('CATEGORY_SELECT');
+      return;
+    }
+    if (rt === 'CASE_STUDY') setCaseStudyMode('LIST');
+    if (rt === 'GROUP_INDIVIDUAL') setCounselingSessionMode('LIST');
+    if (rt === 'HEALTH_STATUS') setHealthRecordMode('LIST');
+    if (rt === 'BEREAVED_STUDENTS') setParentLossMode('LIST');
+  };
+
+  /** Open a record straight into its "add new" form — never a popup. */
+  const openRecordForm = (rt: RecordType) => {
+    openRecordList(rt);
+    switch (rt) {
+      case 'SPECIAL_CASES':
+        setSpecialCasesFromDashboard(true);
+        setSpecialCaseMode('CATEGORY_SELECT');
+        break;
+      case 'GROUP_INDIVIDUAL':
+        setCounselingSessionMode('CREATE');
+        break;
+      case 'CASE_STUDY':
+        setCaseStudyMode('CREATE');
+        break;
+      case 'HEALTH_STATUS':
+        setHealthRecordMode('CREATE');
+        break;
+      case 'BEREAVED_STUDENTS':
+        setParentLossMode('CREATE');
+        break;
+      case 'DAILY_ACTIVITY_PLAN':
+        setRecordStartInAdd(true);
+        break;
+      case 'HEALTH_KEY_GUIDE':
+        break;
+    }
+  };
+
+  /** Merge records imported from DOCX/Excel files through Settings. */
+  const handleImportRecordResult = (result: RecordImportResult) => {
+    switch (result.kind) {
+      case 'health': {
+        const imported = result.records as HealthRecord[];
+        const updated = [...imported, ...healthRecords];
+        setHealthRecords(updated);
+        saveHealthRecords(updated);
+        break;
+      }
+      case 'parentLoss': {
+        const imported = result.records as ParentLossRecord[];
+        const updated = [...imported, ...parentLossRecords];
+        setParentLossRecords(updated);
+        saveParentLossRecords(updated);
+        break;
+      }
+      case 'caseStudy': {
+        const imported = result.records as CaseStudy[];
+        const updated = [...imported, ...caseStudies];
+        setCaseStudies(updated);
+        saveCaseStudies(updated);
+        break;
+      }
+      case 'session': {
+        const imported = result.records as CounselingSession[];
+        const updated = [...imported, ...counselingSessions];
+        setCounselingSessions(updated);
+        saveCounselingSessions(updated);
+        break;
+      }
+      case 'specialCase': {
+        const imported = result.records as SpecialCaseRecord[];
+        const updated = [...imported, ...specialCases];
+        setSpecialCases(updated);
+        saveSpecialCases(updated);
+        break;
+      }
+      case 'counseling':
+      default: {
+        const imported = result.records as CounselingRecord[];
+        const updated = [...imported, ...records];
+        setRecords(updated);
+        saveRecords(updated);
+        break;
+      }
+    }
+  };
+
   return (
     <>
       <DesktopWindow 
         activeModule={activeModule} 
         onNavigate={handleNavigate}
+        profile={profile}
       >
         {renderActiveModuleContent()}
       </DesktopWindow>

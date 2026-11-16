@@ -1,8 +1,11 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const url = require('url');
+const os = require('os');
+const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 
 const isDev = !app.isPackaged;
 
@@ -10,6 +13,154 @@ const isDev = !app.isPackaged;
 nativeTheme.themeSource = 'light';
 
 let mainWindow;
+
+// ── Single-instance behaviour ───────────────────────────────────────────────
+// Without this, double-clicking the shortcut while Murshid was already running
+// (even minimised or hidden behind other windows) appeared to do nothing. Now a
+// second launch focuses/restores the existing window instead of starting a
+// duplicate copy.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      if (app.isReady()) createWindow();
+      return;
+    }
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+    mainWindow.setFullScreen(true);
+  });
+}
+
+// ── Activation Manager (public configuration only) ──────────────────────────
+// The anon key is publishable and guarded by RLS; the application key only
+// identifies Murshid's section inside the Activation Manager project.
+const ACTIVATION_MANAGER_URL =
+  process.env.VITE_ACTIVATION_MANAGER_URL || 'https://tpkhfoimtcxjfksxlvmo.supabase.co';
+const ACTIVATION_MANAGER_ANON_KEY =
+  process.env.VITE_ACTIVATION_MANAGER_ANON_KEY ||
+  'sb_publishable_2Y4swUzZu3tKn2o-KuIkMw_nRFud0Jb';
+const MURSHID_APPLICATION_KEY =
+  process.env.VITE_MURSHID_APPLICATION_KEY ||
+  process.env.MURSHID_APPLICATION_KEY ||
+  '412ed76c-741a-49d8-afcc-e7eed62e8fcd';
+
+ipcMain.on('activation:config', (event) => {
+  event.returnValue = {
+    url: ACTIVATION_MANAGER_URL,
+    anonKey: ACTIVATION_MANAGER_ANON_KEY,
+    applicationKey: MURSHID_APPLICATION_KEY,
+  };
+});
+
+// ── Hardware-bound device identity ─────────────────────────────────────────
+// The activation licence belongs to this machine; the renderer receives only a
+// salted SHA-256 fingerprint, never the raw hardware value. Nothing is stored in
+// the application folder, so copying the app cannot copy the activation.
+let cachedDeviceIdentity = null;
+function computeDeviceIdentity() {
+  if (cachedDeviceIdentity) return cachedDeviceIdentity;
+
+  let machineGuid = '';
+  try {
+    const out = execFileSync(
+      'reg.exe',
+      ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'],
+      { encoding: 'utf8', windowsHide: true, timeout: 8000 }
+    );
+    const match = String(out).match(/MachineGuid\s+REG_\w+\s+([^\r\n]+)/i);
+    if (match) machineGuid = match[1].trim();
+  } catch (err) {
+    console.warn('[MURSHID DEVICE] MachineGuid read failed:', err && err.message);
+  }
+
+  if (!machineGuid) {
+    try {
+      const out = execFileSync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', '(Get-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Cryptography" -Name MachineGuid).MachineGuid'],
+        { encoding: 'utf8', windowsHide: true, timeout: 12000 }
+      );
+      machineGuid = String(out || '').trim();
+    } catch (err) {
+      console.warn('[MURSHID DEVICE] MachineGuid fallback failed:', err && err.message);
+    }
+  }
+
+  const host = os.hostname() || '';
+  const raw = ['murshid', 'activation-device-v2', machineGuid || 'no-machine-guid', host].join('|');
+  const id = crypto.createHash('sha256').update(raw).digest('hex');
+  cachedDeviceIdentity = {
+    id,
+    deviceName: `Windows · ${host || 'PC'}`,
+    shortId: id.slice(0, 8).toUpperCase(),
+  };
+  return cachedDeviceIdentity;
+}
+
+ipcMain.on('activation:device-identity', (event) => {
+  try {
+    event.returnValue = computeDeviceIdentity();
+  } catch {
+    event.returnValue = { id: '', deviceName: 'Windows', shortId: '' };
+  }
+});
+
+// ── Local activation snapshot (offline expiry) ─────────────────────────────
+// Stores the last server-approved activatedAt/expiresAt window in the Electron
+// user-data directory (never the application folder), encrypted with DPAPI via
+// safeStorage. A copied file cannot be decrypted on another PC.
+const activationStatePath = () => path.join(app.getPath('userData'), 'secure', 'activation-state.bin');
+
+function readActivationState() {
+  try {
+    const file = activationStatePath();
+    if (!fs.existsSync(file)) return null;
+    const raw = fs.readFileSync(file);
+    const json = safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(raw) : raw.toString('utf8');
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (err) {
+    console.warn('[MURSHID ACTIVATION] Could not read local state:', err && err.message);
+    return null;
+  }
+}
+
+function writeActivationState(state) {
+  try {
+    const file = activationStatePath();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const json = JSON.stringify(state);
+    if (safeStorage.isEncryptionAvailable()) {
+      fs.writeFileSync(file, safeStorage.encryptString(json));
+    } else {
+      fs.writeFileSync(file, json, 'utf8');
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err && err.message };
+  }
+}
+
+function clearActivationState() {
+  try {
+    const file = activationStatePath();
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err && err.message };
+  }
+}
+
+ipcMain.handle('activation-state:get', async () => readActivationState());
+ipcMain.handle('activation-state:set', async (_event, state) => {
+  if (!state || typeof state !== 'object') return { success: false };
+  return writeActivationState(state);
+});
+ipcMain.handle('activation-state:clear', async () => clearActivationState());
 
 // ── Update Manager ────────────────────────────────────────────────────
 const updateManager = require('./update-manager.cjs');
@@ -35,12 +186,12 @@ function createWindow() {
     titleBarStyle: 'default',
     backgroundColor: '#0B0E15',
     fullscreen: true,
-    show: false,
+    show: true,
   });
 
   const loadDist = process.env.ELECTRON_LOAD_DIST === '1' || process.argv.includes('--dist');
   if (isDev && !loadDist) {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadURL(process.env.MURSHID_DEV_URL || 'http://localhost:3000');
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
@@ -48,14 +199,23 @@ function createWindow() {
   // Application-wide zoom (Ctrl+Plus/Minus/0 and Ctrl+wheel)
   zoom.install(mainWindow);
 
-  // Always launch in full screen mode (no title bar, no taskbar, no window
-  // chrome). Re-asserted once the window is ready so the state is applied even
-  // if it was lost while the window was still hidden.
-  mainWindow.setFullScreen(true);
-
+  // The window is created visible (show: true). Starting hidden and calling
+  // show() from ready-to-show left the window minimised off-screen on some
+  // Windows systems, which made the app look like it never launched.
   mainWindow.once('ready-to-show', () => {
-    if (!mainWindow.isDestroyed()) mainWindow.setFullScreen(true);
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.show();
+    mainWindow.focus();
+    mainWindow.setFullScreen(true);
+  });
+
+  // If the renderer fails to load, focus the window so the failure is visible.
+  mainWindow.webContents.on('did-fail-load', (_event, _code, _desc, _url, isMainFrame) => {
+    if (!isMainFrame) return;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
 
   // F11 toggles full screen so the app can be left with window chrome back.
@@ -74,34 +234,27 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // ── Update Check (production only) ─────────────────────────────
-  if (!isDev) {
-    try {
-      const updateWin = new BrowserWindow({
-        width: 500, height: 350, show: false, resizable: false,
-        webPreferences: { contextIsolation: true, nodeIntegration: false },
-      });
-      mainWindow = updateWin;
-      updateManager.setWindow(updateWin);
-      updateManager.startStartupCheck();
-      const shouldContinue = await updateManager.waitForCheck(20000);
-      if (!shouldContinue) return;
-      if (!updateWin.isDestroyed()) updateWin.close();
-    } catch (err) {
-      console.error('[Startup] Update error:', err.message);
-    }
-  }
-
-  // Initialize template registry
-  const { templateRegistry } = require('./template-registry.cjs');
-  const regResult = templateRegistry.initialize();
-  if (regResult.missing.length > 0) {
-    console.log('[Registry] Templates missing:', regResult.missing.join(', '));
-  }
-  console.log(`[Registry] ${regResult.loaded} templates loaded`);
-
+  if (!gotSingleInstanceLock) return;
+  // Show the window first, before any template/registry work. Nothing visible may
+  // block the window from appearing: startup must stay instant.
   createWindow();
   updateManager.setWindow(mainWindow);
+  if (!isDev) updateManager.startStartupCheck();
+
+  // Initialize the template registry just after the window is on its way. This reads
+  // and parses every DOCX template synchronously, so it must never run before the UI.
+  setImmediate(() => {
+    try {
+      const { templateRegistry } = require('./template-registry.cjs');
+      const regResult = templateRegistry.initialize();
+      if (regResult.missing.length > 0) {
+        console.log('[Registry] Templates missing:', regResult.missing.join(', '));
+      }
+      console.log(`[Registry] ${regResult.loaded} templates loaded`);
+    } catch (err) {
+      console.error('[Registry] initialization failed:', err);
+    }
+  });
 
   // ── Record Cover Service IPC ───────────────────────────────────────────
   const { RecordCoverService } = require('./RecordCoverService.cjs');
@@ -850,34 +1003,6 @@ ipcMain.handle('window:minimize', () => {
 
 ipcMain.handle('window:close', () => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
-});
-
-/**
- * Read-only reader for a Telegram PUBLIC channel web page.
- *
- * Runs here in the main process, not in the renderer, so no CORS workaround,
- * no scraping in the page, and no credentials are involved — this is not the
- * Bot API. A short TTL cache absorbs repeated visibility refreshes without
- * tightening the renderer's own polling interval.
- */
-const publicChannel = require('./telegram-public-channel.cjs');
-const PUBLIC_CHANNEL_TTL_MS = 10000;
-const publicChannelCache = new Map();
-
-ipcMain.handle('telegram:public-channel', async (_event, username) => {
-  const key = String(username || '').trim().toLowerCase();
-  const cached = publicChannelCache.get(key);
-  if (cached && Date.now() - cached.at < PUBLIC_CHANNEL_TTL_MS) return cached.snapshot;
-
-  try {
-    const snapshot = await publicChannel.readPublicChannel(username);
-    publicChannelCache.set(key, { at: Date.now(), snapshot });
-    return snapshot;
-  } catch (err) {
-    // Surface the reason to the renderer so it can show an honest failure
-    // state instead of silently presenting an old snapshot as current.
-    return { channel: key, source: null, fetchedAt: null, posts: [], error: err.message };
-  }
 });
 
 const sessionManager = require('./session-manager.cjs');

@@ -19,7 +19,13 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
   const [schoolName, setSchoolName] = useState('');
   const [province, setProvince] = useState('كركوك');
   const [schoolType, setSchoolType] = useState<'PRIMARY' | 'MIDDLE' | 'HIGH' | 'SECONDARY' | 'KINDERGARTEN'>('MIDDLE');
-  const [academicYear, setAcademicYear] = useState('2025-2026');
+  const currentYear = new Date().getFullYear();
+  // At least through 2040-2041, and always starting from the current year.
+  const academicYears = Array.from(
+    { length: Math.max(1, 2041 - currentYear) },
+    (_, i) => `${currentYear + i}-${currentYear + i + 1}`
+  );
+  const [academicYear, setAcademicYear] = useState(`${currentYear}-${currentYear + 1}`);
   const [counselorGender, setCounselorGender] = useState<'MALE' | 'FEMALE'>('MALE');
   const [error, setError] = useState('');
 
@@ -172,9 +178,11 @@ export default function RegistrationView({ onComplete }: RegistrationViewProps) 
                 onChange={(e) => setAcademicYear(e.target.value)}
                 className="form-input"
               >
-                <option value="2025-2026">2025 - 2026</option>
-                <option value="2026-2027">2026 - 2027</option>
-                <option value="2027-2028">2027 - 2028</option>
+                {academicYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year.replace('-', ' - ')}
+                  </option>
+                ))}
               </select>
             </div>
 

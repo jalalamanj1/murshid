@@ -20,3 +20,5 @@ server.cjs
 logo.png
 mos/
 data/
+release-build/
+release-out/

@@ -229,6 +229,7 @@ export function importData<T>(
   factory: () => T,
   fieldKeys: (keyof T)[],
   transforms?: Record<string, (val: string) => string>,
+  extraFieldsKey?: string,
 ): ImportResult<T> {
   const items: T[] = [];
   const errors: string[] = [];
@@ -247,6 +248,22 @@ export function importData<T>(
             val = transforms[fieldKey](val);
           }
           (item as any)[fieldKey] = val;
+        }
+      }
+
+      // Any column the fixed form does not know is kept as an extra section,
+      // keyed by the sheet's own header so nothing the sheet author wrote is lost.
+      if (extraFieldsKey) {
+        const extra: Record<string, string> = {};
+        for (const [header, raw] of Object.entries(row)) {
+          const fieldKey = mapping[header];
+          if (fieldKey === 'ignore') continue;
+          if (fieldKey && fieldKey !== 'custom' && (fieldKeys as string[]).includes(fieldKey)) continue;
+          const val = String(raw ?? '').trim();
+          if (val) extra[header] = val;
+        }
+        if (Object.keys(extra).length > 0) {
+          (item as any)[extraFieldsKey] = extra;
         }
       }
 

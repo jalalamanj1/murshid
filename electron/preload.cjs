@@ -6,12 +6,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pickFolder: () => ipcRenderer.invoke('dialog:pick-folder'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  getActivationManagerConfig: () => ipcRenderer.sendSync('activation:config'),
+  getDeviceIdentity: () => ipcRenderer.sendSync('activation:device-identity'),
+  getActivationState: () => ipcRenderer.invoke('activation-state:get'),
+  setActivationState: (state) => ipcRenderer.invoke('activation-state:set', state),
+  clearActivationState: () => ipcRenderer.invoke('activation-state:clear'),
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
-
-  // Read-only public Telegram channel page. No token, no Bot API, no scraping
-  // in the renderer — the main process performs the fetch and returns plain text.
-  getPublicChannelPosts: (username) => ipcRenderer.invoke('telegram:public-channel', username),
 
   // ── Session Management ──────────────────────────────────────────
   createSession: (title) => ipcRenderer.invoke('session:create', title),

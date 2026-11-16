@@ -10,7 +10,7 @@ import {
   Download, FileSpreadsheet, MapPin, ArrowRight, Sparkles
 } from 'lucide-react';
 import { Student, CounselorProfile, CounselingRecord } from '../types';
-import { GetGradesFromProfile, normalizeClassGrade, normalizeExcelDate } from '../lib/gradeService';
+import { GetGradesFromProfile, normalizeClassGrade, normalizeExcelDate, splitClassGrade } from '../lib/gradeService';
 import { academicYear, toLatinDigits } from '../lib/format';
 
 // Helper: display birthDate — if it's an Excel serial number string, convert it
@@ -52,6 +52,7 @@ export default function StudentManagementView({
 
   const [formName, setFormName] = useState('');
   const [formGrade, setFormGrade] = useState('');
+  const [formSection, setFormSection] = useState('');
   const [formBirthDate, setFormBirthDate] = useState('');
   const [formNationalId, setFormNationalId] = useState('');
   const [formSiblingOrder, setFormSiblingOrder] = useState('');
@@ -117,7 +118,7 @@ export default function StudentManagementView({
   };
 
   const resetForm = () => {
-    setFormName(''); setFormGrade(''); setFormBirthDate(''); setFormNationalId('');
+    setFormName(''); setFormGrade(''); setFormSection(''); setFormBirthDate(''); setFormNationalId('');
     setFormSiblingOrder(''); setFormAddress(''); setFormFatherName(''); setFormFatherAlive('');
     setFormFatherEducation(''); setFormFatherJob(''); setFormFatherPhone(''); setFormFatherDeathInfo('');
     setFormMotherName(''); setFormMotherAlive(''); setFormMotherEducation(''); setFormMotherJob('');
@@ -129,7 +130,11 @@ export default function StudentManagementView({
 
   const handleStartEdit = (student: Student) => {
     setEditingStudent(student);
-    setFormName(student.fullName); setFormGrade(student.classGrade); setFormBirthDate(student.birthDate);
+    setFormName(student.fullName);
+    const split = splitClassGrade(student.classGrade);
+    setFormGrade(student.section ? student.classGrade : split.grade);
+    setFormSection(student.section || split.section);
+    setFormBirthDate(student.birthDate);
     setFormNationalId(student.nationalId); setFormSiblingOrder(student.siblingOrder); setFormAddress(student.address);
     setFormFatherName(student.fatherName); setFormFatherAlive(student.fatherAlive);
     setFormFatherEducation(student.fatherEducation); setFormFatherJob(student.fatherJob);
@@ -157,6 +162,7 @@ export default function StudentManagementView({
       createdAt: editingStudent?.createdAt || new Date().toISOString(),
       fullName: formName.trim(),
       classGrade: formGrade.trim(),
+      section: formSection.trim() || undefined,
       birthDate: formBirthDate,
       nationalId: formNationalId,
       siblingOrder: formSiblingOrder,
@@ -194,8 +200,15 @@ export default function StudentManagementView({
   const getStudentRecordCount = (studentId: string) => records.filter(r => r.studentId === studentId).length;
 
   const handleImportStudents = (items: Student[]) => {
-    if (onImportStudents) onImportStudents(items);
-    else items.forEach(s => onAddStudent(s));
+    // Imported sheets may carry the section inside the class column ("7A" or
+    // "الأول المتوسط - الشعبة أ"); split it into the two stored fields.
+    const normalized = items.map(s => {
+      if (s.section) return s;
+      const parts = splitClassGrade(s.classGrade);
+      return { ...s, classGrade: parts.grade, section: parts.section || undefined };
+    });
+    if (onImportStudents) onImportStudents(normalized);
+    else normalized.forEach(s => onAddStudent(s));
   };
 
   const handleExportStudentData = async (student: Student) => {
@@ -270,12 +283,17 @@ export default function StudentManagementView({
   const handleExportExcel = async () => {
     try {
       const XLSX = await import('xlsx');
-      const headers = ['الاسم الكامل', 'الصف', 'تاريخ الميلاد', 'رقم البطاقة', 'ترتيب الطالب', 'العنوان',
+      const baseHeaders: string[] = ['الاسم الكامل', 'الصف', 'تاريخ الميلاد', 'رقم البطاقة', 'ترتيب الطالب', 'العنوان',
         'اسم الأب', 'الأب على قيد الحياة', 'تحصيل الأب', 'مهنة الأب', 'هاتف الأب', 'وفاة الأب',
         'اسم الأم', 'الأم على قيد الحياة', 'تحصيل الأم', 'مهنة الأم', 'هاتف الأم', 'وفاة الأم',
         'يعيش مع', 'هاتف بديل', 'نوع السكن', 'يعمل', 'نوع العمل', 'مرض مزمن', 'تفاصيل المرض',
         'طبيب اختصاص', 'اسم الطبيب', 'الحالة النفسية', 'التأخير الدراسي', 'المواهب'];
-      const rows = filteredStudents.map(s => ({
+      // Extra columns that arrived from imported sheets keep their original headers.
+      const extraHeaders = Array.from(
+        new Set<string>(filteredStudents.flatMap(s => Object.keys(s.customFields ?? {})))
+      );
+      const headers: string[] = [...baseHeaders, ...extraHeaders];
+      const rows: Record<string, string>[] = filteredStudents.map(s => ({
         'الاسم الكامل': s.fullName, 'الصف': s.classGrade, 'تاريخ الميلاد': s.birthDate,
         'رقم البطاقة': s.nationalId || '', 'ترتيب الطالب': s.siblingOrder || '', 'العنوان': s.address,
         'اسم الأب': s.fatherName || '', 'الأب على قيد الحياة': s.fatherAlive || '',
@@ -290,7 +308,8 @@ export default function StudentManagementView({
         'طبيب اختصاص': s.seesSpecialist || '', 'اسم الطبيب': s.specialistDetails || '',
         'الحالة النفسية': s.mentalState || '', 'التأخير الدراسي': s.academicDelay || '',
         'المواهب': s.talents || '',
-      }));
+        ...(s.customFields || {}),
+      }) as Record<string, string>);
       const ws: Record<string, unknown> = {};
       const thinBorder = { top: { style: 'thin' as const }, bottom: { style: 'thin' as const }, left: { style: 'thin' as const }, right: { style: 'thin' as const } };
       const headerStyle = { font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 }, fill: { fgColor: { rgb: '2D8CFF' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: false }, border: thinBorder };
@@ -375,7 +394,10 @@ export default function StudentManagementView({
                       {student.fatherName && <span className="text-[10px] text-slate-400 dark:text-slate-500 block">أب: {student.fatherName}</span>}
                     </div>
                   </td>
-                  <td className="p-3 text-slate-600 dark:text-slate-300">{student.classGrade}</td>
+                  <td className="p-3 text-slate-600 dark:text-slate-300">
+                    {student.classGrade}
+                    {student.section ? <span className="text-[10px] text-slate-400"> · شعبة {student.section}</span> : null}
+                  </td>
                     <td className="p-3 font-mono text-slate-500 dark:text-slate-400">{displayDate(student.birthDate)}</td>
                   <td className="p-3 text-center"><span className="px-2 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 rounded-md font-mono font-black border border-blue-100 dark:border-blue-900/40">{toLatinDigits(getStudentRecordCount(student.id))}</span></td>
                   <td className="p-3">
@@ -402,7 +424,24 @@ export default function StudentManagementView({
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">إسم الطالب الرباعي واللقب: *</label><input type="text" required value={formName} onChange={e => setFormName(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
-              <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">الصف: *</label><input type="text" required value={formGrade} onChange={e => setFormGrade(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">المرحلة / الصف: *</label>
+                  <select required value={formGrade} onChange={e => setFormGrade(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue">
+                    <option value="">اختر الصف</option>
+                    {GetGradesFromProfile(profile).map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">الشعبة:</label>
+                  <select value={formSection} onChange={e => setFormSection(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue">
+                    <option value="">بدون شعبة</option>
+                    {['أ', 'ب', 'ج'].map(s => <option key={s} value={s}>الشعبة {s}</option>)}
+                  </select>
+                </div>
+              </div>
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">تاريخ الميلاد:</label><input type="date" value={formBirthDate} onChange={e => setFormBirthDate(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none" /></div>
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">رقم البطاقة الموحدة / الجنسية:</label><input type="text" value={formNationalId} onChange={e => setFormNationalId(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">ترتيب التلميذ بين إخوانه وأخواته:</label><input type="text" value={formSiblingOrder} onChange={e => setFormSiblingOrder(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
@@ -472,7 +511,10 @@ export default function StudentManagementView({
                 </div>
                 <h2 className="text-base font-black text-slate-900 dark:text-slate-100">{viewingStudent.fullName}</h2>
                 <div className="flex justify-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 rounded-full font-bold border border-blue-100 dark:border-blue-900/40">{viewingStudent.classGrade}</span>
+                  <span className="px-2.5 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/40 text-office-blue dark:text-blue-400 rounded-full font-bold border border-blue-100 dark:border-blue-900/40">
+                    {viewingStudent.classGrade}
+                    {viewingStudent.section ? ` · شعبة ${viewingStudent.section}` : ''}
+                  </span>
                 </div>
               </div>
 
@@ -536,6 +578,20 @@ export default function StudentManagementView({
                 </div>
               </div>
 
+              {viewingStudent.customFields && Object.keys(viewingStudent.customFields).length > 0 && (
+                <div className="bg-slate-50 dark:bg-[#0f172a] rounded-xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <h4 className="text-[11px] font-black text-office-blue dark:text-blue-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">أقسام إضافية من ملف Excel</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                    {Object.entries(viewingStudent.customFields).map(([label, value]) => (
+                      <div key={label} className="flex justify-between gap-3">
+                        <span className="font-bold text-slate-500 shrink-0">{label}:</span>
+                        <span className="font-bold text-slate-800 text-end break-words">{value || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-blue-50/50 dark:bg-blue-950/10 rounded-xl p-4 border border-blue-200 dark:border-blue-900/30 flex justify-between items-center">
                 <p className="text-xs font-black text-blue-800 dark:text-blue-300">السجلات الإرشادية: {toLatinDigits(getStudentRecordCount(viewingStudent.id))} سجلات</p>
                 {onOpenRecords && <button onClick={() => { setViewingStudent(null); onOpenRecords(); }} className="bg-office-blue hover:bg-office-hover text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1">فتح السجلات<ChevronLeft className="w-3.5 h-3.5" /></button>}
@@ -566,6 +622,8 @@ export default function StudentManagementView({
             mentalState: '', academicDelay: '', talents: '', createdAt: new Date().toISOString()
           })}
           transforms={{ classGrade: normalizeClassGrade, birthDate: normalizeExcelDate }}
+          extraFieldsKey="customFields"
+          keepUnmapped
           onImport={handleImportStudents}
           onClose={() => setShowImportWizard(false)}
         />

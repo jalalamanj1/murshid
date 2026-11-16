@@ -72,7 +72,7 @@ export default function ParentLossRecordFormView({
     setStudentId(s.id);
     setStudentName(s.fullName);
     setGrade(s.classGrade);
-    setSection('');
+    setSection(s.section || '');
     setGuardianPhoneAuto('');
     setAddress(s.address || '');
     setGuardianName(s.fatherName || '');

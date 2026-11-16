@@ -74,7 +74,7 @@ export default function HealthRecordFormView({
     setStudentId(s.id);
     setStudentName(s.fullName);
     setGrade(s.classGrade);
-    setSection('');
+    setSection(s.section || '');
     setGuardianPhone('');
     setAddress(s.address || '');
     setShowStudentPicker(false);

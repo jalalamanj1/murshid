@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type AppFlowStage = 'SPLASH' | 'LOCKED' | 'REGISTRATION' | 'MAIN';
+export type AppFlowStage = 'SPLASH' | 'ACTIVATION' | 'LOCK' | 'REGISTRATION' | 'MAIN';
 
 export type ActiveModule =
   | 'DASHBOARD'
@@ -30,6 +30,8 @@ export interface Student {
   id: string;
   fullName: string;
   classGrade: string;
+  /** Class section within the grade, e.g. أ / ب / ج. */
+  section?: string;
   birthDate: string;
   nationalId?: string;
   siblingOrder?: string;
@@ -58,6 +60,12 @@ export interface Student {
   mentalState?: string;
   academicDelay?: string;
   talents?: string;
+  /**
+   * Columns imported from an Excel sheet that had no fixed field on the
+   * registration form. Keyed by the sheet's header text so the extra data is
+   * shown under the same section it arrived in.
+   */
+  customFields?: Record<string, string>;
   createdAt: string;
 }
 
@@ -149,6 +157,8 @@ export interface BackupHistoryEntry {
   errorMessage?: string;
 }
 
+export type AutoBackupFrequency = 'off' | 'daily' | 'weekly' | 'monthly';
+
 export interface BackupSettings {
   localFolder: string;
   maxLocalBackups: number;
@@ -160,6 +170,7 @@ export interface BackupSettings {
   autoBackupDaily: boolean;
   autoBackupWeekly: boolean;
   autoBackupMonthly: boolean;
+  autoBackupFrequency: AutoBackupFrequency;
   autoCloudBackup: boolean;
   encryptionEnabled: boolean;
   backupPassword: string;

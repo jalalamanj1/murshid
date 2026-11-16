@@ -50,6 +50,7 @@ const DEFAULT_BACKUP_SETTINGS: BackupSettings = {
   autoBackupDaily: true,
   autoBackupWeekly: false,
   autoBackupMonthly: false,
+  autoBackupFrequency: 'daily',
   autoCloudBackup: true,
   encryptionEnabled: false,
   backupPassword: '',
@@ -81,7 +82,13 @@ export function loadBackupSettings(): BackupSettings {
   const raw = localStorage.getItem(BACKUP_SETTINGS_KEY);
   if (!raw) return { ...DEFAULT_BACKUP_SETTINGS };
   try {
-    return { ...DEFAULT_BACKUP_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<BackupSettings>;
+    const merged = { ...DEFAULT_BACKUP_SETTINGS, ...parsed };
+    // Legacy migration: honor the old daily toggle when no frequency exists.
+    if (!parsed.autoBackupFrequency) {
+      merged.autoBackupFrequency = parsed.autoBackupDaily === false ? 'off' : 'daily';
+    }
+    return merged;
   } catch {
     return { ...DEFAULT_BACKUP_SETTINGS };
   }
@@ -452,6 +459,70 @@ export async function restoreFromBuffer(
   onProgress?.('تمت الاستعادة بنجاح! سيتم إعادة تشغيل التطبيق...');
   await new Promise(resolve => setTimeout(resolve, 1500));
   window.location.reload();
+}
+
+// ── Automatic local backup ───────────────────────────────────────────
+
+export const AUTO_BACKUP_INTERVALS: Record<Exclude<import('../types').AutoBackupFrequency, 'off'>, number> = {
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+  monthly: 30 * 24 * 60 * 60 * 1000,
+};
+
+let autoBackupRunning = false;
+
+async function resolveBackupFolder(settings: BackupSettings): Promise<string> {
+  let folder = settings.localFolder?.trim() || '';
+  if (!folder) {
+    try {
+      const electron = (window as any).electronAPI;
+      const res = await electron?.getDefaultBackupFolder?.();
+      if (res?.ok && res.folder) folder = res.folder;
+    } catch {
+      /* ignore */
+    }
+  }
+  return folder;
+}
+
+/**
+ * Runs an automatic backup when the configured schedule is due.
+ * Returns { ran: false } when nothing was due or auto-backup is disabled.
+ */
+export async function runAutoBackupIfDue(): Promise<{
+  ran: boolean;
+  entry?: BackupHistoryEntry;
+  error?: string;
+}> {
+  if (autoBackupRunning) return { ran: false };
+
+  const settings = loadBackupSettings();
+  const frequency = settings.autoBackupFrequency || 'off';
+  if (frequency === 'off') return { ran: false };
+
+  const interval = AUTO_BACKUP_INTERVALS[frequency as keyof typeof AUTO_BACKUP_INTERVALS];
+  if (!interval) return { ran: false };
+
+  const last = settings.lastLocalBackup ? Date.parse(settings.lastLocalBackup) : 0;
+  if (last && Date.now() - last < interval) return { ran: false };
+
+  const folder = await resolveBackupFolder(settings);
+  if (!folder) return { ran: false, error: 'لم يتم تحديد مجلد للنسخ الاحتياطي.' };
+
+  autoBackupRunning = true;
+  try {
+    const entry = await createLocalBackup(settings, folder);
+    try {
+      window.dispatchEvent(new Event('murshid-backup-updated'));
+    } catch {
+      /* ignore */
+    }
+    return { ran: true, entry };
+  } catch (err: any) {
+    return { ran: false, error: err?.message || 'فشل النسخ الاحتياطي التلقائي.' };
+  } finally {
+    autoBackupRunning = false;
+  }
 }
 
 // ── Export helpers ───────────────────────────────────────────────────

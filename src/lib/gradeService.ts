@@ -104,6 +104,33 @@ export function normalizeClassGrade(value: string): string {
 }
 
 /**
+ * Split a stored class value into its level and section parts.
+ * Handles "الأول المتوسط - الشعبة أ", compact "7A", and plain "الأول المتوسط".
+ */
+export function splitClassGrade(value: string): { grade: string; section: string } {
+  const raw = (value || '').trim();
+  if (!raw) return { grade: '', section: '' };
+
+  const full = raw.match(/^(.*?)\s*[-–]\s*الشعبة\s*([أبجA-Ca-c])\s*$/);
+  if (full) return { grade: full[1].trim(), section: full[2].trim() };
+
+  const compact = parseCompactClass(raw);
+  if (compact) {
+    const m = compact.match(/^(.*?)\s*[-–]\s*الشعبة\s*([أبج])\s*$/);
+    if (m) return { grade: m[1].trim(), section: m[2].trim() };
+  }
+
+  return { grade: raw, section: '' };
+}
+
+/** Combine a grade level and section into the stored class string. */
+export function joinClassGrade(grade: string, section: string): string {
+  const g = (grade || '').trim();
+  const s = (section || '').trim();
+  return s ? `${g} - الشعبة ${s}` : g;
+}
+
+/**
  * Convert an Excel serial date number (e.g. 45485) to YYYY-MM-DD.
  * Handles the Excel 1900 leap year bug (serial 60 = 1900-02-29 which doesn't exist).
  * If the value is already a date string or not a number, return it unchanged.

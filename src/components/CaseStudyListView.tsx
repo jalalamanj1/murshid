@@ -43,9 +43,10 @@ interface Props {
   onEdit: (cs: CaseStudy) => void;
   onDelete: (id: string) => void;
   onBack: () => void;
+  onNew?: () => void;
 }
 
-export default function CaseStudyListView({ students, profile, caseStudies, onEdit, onDelete, onBack }: Props) {
+export default function CaseStudyListView({ students, profile, caseStudies, onEdit, onDelete, onBack, onNew }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
@@ -268,6 +269,16 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
             <p className="text-[11px] text-slate-400">{toLatinDigits(filtered.length)} حالة مسجلة</p>
           </div>
         </div>
+        {onNew && (
+          <button
+            type="button"
+            onClick={onNew}
+            className="bg-office-blue hover:bg-office-hover text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>دراسة حالة جديدة</span>
+          </button>
+        )}
       </div>
 
       {/* Search + Filter */}
@@ -297,7 +308,7 @@ export default function CaseStudyListView({ students, profile, caseStudies, onEd
         <div className="card bg-white dark:bg-[#1e293b] p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
           <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            {search ? 'لا توجد نتائج مطابقة للبحث.' : 'لا توجد دراسات حالة بعد. اضغط "تدوين سجل جديد" من لوحة التحكم.'}
+            {search ? 'لا توجد نتائج مطابقة للبحث.' : 'لا توجد دراسات حالة بعد. اضغط "تدوين سجل جديد" من زر الإضافة أعلاه.'}
           </p>
         </div>
       ) : (

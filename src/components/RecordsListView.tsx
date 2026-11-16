@@ -43,6 +43,8 @@ interface RecordsListViewProps {
   onUpdateRecord?: (updatedRecord: CounselingRecord) => void;
   onDeleteRecord: (id: string) => void;
   onBack: () => void;
+  /** Opened from a dashboard "add" action: show the entry form immediately. */
+  startInAddForm?: boolean;
 }
 
 // Custom Auto-Expanding Textarea Component
@@ -91,11 +93,19 @@ export default function RecordsListView({
   onAddRecord,
   onUpdateRecord,
   onDeleteRecord,
-  onBack
+  onBack,
+  startInAddForm = false,
 }: RecordsListViewProps) {
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(startInAddForm);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [printRecord, setPrintRecord] = useState<CounselingRecord | null>(null);
+
+  useEffect(() => {
+    if (startInAddForm) {
+      setShowAddForm(true);
+      setEditingRecordId(null);
+    }
+  }, [startInAddForm, recordType]);
 
   useEffect(() => {
     if (printRecord) {

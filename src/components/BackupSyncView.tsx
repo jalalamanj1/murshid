@@ -2,16 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
- * BackupSyncView - Local backup module.
- * Local backup, auto-backup schedules, encryption, history, restore, and settings.
+ * Backup & Restore view: manual backup, restore, and automatic backup schedule.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Database,
-  HardDrive,
-  Cloud,
-  RefreshCw,
   Download,
   Upload,
   FolderOpen,
@@ -19,45 +15,21 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Shield,
-  Lock,
-  Unlock,
-  Settings2,
-  History,
-  Trash2,
-  Eye,
-  EyeOff,
-  Wifi,
-  WifiOff,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
   Info,
+  Loader2,
   FileArchive,
-  KeyRound,
-  Calendar,
-  ToggleLeft,
-  ToggleRight,
+  CalendarClock,
+  HardDrive,
+  X,
 } from 'lucide-react';
-import {
-  BackupSettings,
-  BackupHistoryEntry,
-} from '../types';
+import type { AutoBackupFrequency, BackupSettings } from '../types';
 import {
   loadBackupSettings,
   saveBackupSettings,
   createLocalBackup,
   restoreFromFile,
-  restoreFromBuffer,
-  estimateBackupSize,
 } from '../lib/backupService';
 import { toLatinDigits } from '../lib/format';
-
-// ── Types ────────────────────────────────────────────────────────────
-
-interface BackupSyncViewProps {
-  onNavigateToStudents?: () => void;
-}
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -67,73 +39,64 @@ interface Toast {
   message: string;
 }
 
-// ── Component ────────────────────────────────────────────────────────
+const FREQUENCY_OPTIONS: { value: AutoBackupFrequency; label: string }[] = [
+  { value: 'off', label: 'معطّل' },
+  { value: 'daily', label: 'يومي' },
+  { value: 'weekly', label: 'أسبوعي' },
+  { value: 'monthly', label: 'شهري' },
+];
 
-export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewProps) {
-  // ── State ──────────────────────────────────────────────────────
+export default function BackupSyncView() {
   const [settings, setSettings] = useState<BackupSettings>(loadBackupSettings());
   const [defaultFolder, setDefaultFolder] = useState('');
-
-  const [localProgress, setLocalProgress] = useState('');
-  const [isLocalWorking, setIsLocalWorking] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
+  const [progress, setProgress] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
-
-  const [showSettings, setShowSettings] = useState(false);
-  const [showHistory, setShowHistory] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [showRestore, setShowRestore] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restorePassword, setRestorePassword] = useState('');
-  const [selectedRestoreFile, setSelectedRestoreFile] = useState<File | null>(null);
-
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [estimatedSize, setEstimatedSize] = useState('...');
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Toast helper ──────────────────────────────────────────────
   const addToast = useCallback((type: ToastType, message: string) => {
     const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  // ── Estimate size ─────────────────────────────────────────────
-  useEffect(() => {
-    estimateBackupSize(settings).then(setEstimatedSize).catch(() => setEstimatedSize('غير معروف'));
-  }, [settings]);
-
-  // ── Default backup folder (Desktop\Murshid Backups) ──────────
-  useEffect(() => {
-    const e = (window as any).electronAPI;
-    if (e?.getDefaultBackupFolder) {
-      e.getDefaultBackupFolder()
-        .then((res: any) => {
-          if (res?.ok && res.folder) setDefaultFolder(res.folder);
-        })
-        .catch(() => {});
-    }
+  const refreshSettings = useCallback(() => {
+    setSettings(loadBackupSettings());
   }, []);
 
-  // Effective folder: user choice, or the default when none chosen
+  useEffect(() => {
+    const electron = (window as any).electronAPI;
+    electron
+      ?.getDefaultBackupFolder?.()
+      .then((res: any) => {
+        if (res?.ok && res.folder) setDefaultFolder(res.folder);
+      })
+      .catch(() => {});
+
+    const onUpdated = () => refreshSettings();
+    window.addEventListener('murshid-backup-updated', onUpdated);
+    return () => window.removeEventListener('murshid-backup-updated', onUpdated);
+  }, [refreshSettings]);
+
   const effectiveFolder = settings.localFolder?.trim() || defaultFolder;
 
-  // ── Save settings helper ──────────────────────────────────────
   const updateSettings = (patch: Partial<BackupSettings>) => {
     const next = { ...settings, ...patch };
     setSettings(next);
     saveBackupSettings(next);
   };
 
-  // ── Local backup ──────────────────────────────────────────────
-  const handleLocalBackup = async () => {
-    setIsLocalWorking(true);
-    setLocalProgress('');
+  const handleBackupNow = async () => {
+    setIsWorking(true);
+    setProgress('');
     try {
       let folder = settings.localFolder?.trim() || defaultFolder;
       if (!folder) {
-        // Default folder info may still be loading — fetch it on demand.
-        const e = (window as any).electronAPI;
-        const res = await e?.getDefaultBackupFolder?.();
+        const res = await (window as any).electronAPI?.getDefaultBackupFolder?.();
         if (res?.ok && res.folder) {
           folder = res.folder;
           setDefaultFolder(res.folder);
@@ -143,22 +106,22 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
         addToast('error', 'تعذر تحديد مجلد النسخ الاحتياطي.');
         return;
       }
-      await createLocalBackup(settings, folder, setLocalProgress);
-      setSettings(loadBackupSettings()); // reload to get updated history
-      addToast('success', 'تم النسخ الاحتياطي المحلي بنجاح!');
+      await createLocalBackup(settings, folder, setProgress);
+      refreshSettings();
+      addToast('success', 'تم إنشاء النسخة الاحتياطية بنجاح.');
     } catch (err: any) {
-      addToast('error', 'فشلت العملية: ' + (err.message || 'خطأ غير معروف'));
+      addToast('error', 'فشل النسخ الاحتياطي: ' + (err?.message || 'خطأ غير معروف'));
     } finally {
-      setIsLocalWorking(false);
+      setIsWorking(false);
+      setProgress('');
     }
   };
 
-  // ── Local folder picker (native directory dialog) ──────────────
-  const handlePickLocalFolder = async () => {
+  const handlePickFolder = async () => {
     try {
-      const e = (window as any).electronAPI;
-      if (e?.pickFolder) {
-        const result = await e.pickFolder();
+      const electron = (window as any).electronAPI;
+      if (electron?.pickFolder) {
+        const result = await electron.pickFolder();
         if (result?.canceled) return;
         if (result?.filePaths?.[0]) {
           updateSettings({ localFolder: result.filePaths[0] });
@@ -172,330 +135,285 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
         }
       }
     } catch {
-      addToast('error', 'تعذر اختيار مجلد النسخ الاحتياطي.');
+      addToast('error', 'تعذر اختيار المجلد.');
     }
   };
 
-  const handleResetLocalFolder = () => {
-    updateSettings({ localFolder: '' });
-    addToast('success', 'تم استعادة المجلد الافتراضي.');
-  };
-
-  // ── Local restore ─────────────────────────────────────────────
-  const handleLocalRestore = () => {
-    setShowRestoreModal(true);
-  };
-
-  const executeLocalRestore = async () => {
-    if (!selectedRestoreFile) {
-      addToast('warning', 'الرجاء اختيار ملف النسخة الاحتياطية.');
-      return;
-    }
+  const executeRestore = async () => {
+    if (!restoreFile) return;
     setIsRestoring(true);
     try {
-      await restoreFromFile(
-        selectedRestoreFile,
-        restorePassword || undefined,
-        (msg) => setLocalProgress(msg)
-      );
-      addToast('success', 'تمت الاستعادة بنجاح!');
+      await restoreFromFile(restoreFile, restorePassword || undefined, setProgress);
+      addToast('success', 'تمت الاستعادة بنجاح.');
     } catch (err: any) {
-      addToast('error', err.message || 'فشلت الاستعادة');
+      addToast('error', err?.message || 'فشلت الاستعادة.');
+    } finally {
       setIsRestoring(false);
     }
   };
 
-  // ── Format date helper ────────────────────────────────────────
-  const fmtDate = (iso?: string) => {
-    if (!iso) return 'لم يتم بعد';
-    const d = new Date(iso);
-    return toLatinDigits(d.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+  const closeRestore = () => {
+    if (isRestoring) return;
+    setShowRestore(false);
+    setRestoreFile(null);
+    setRestorePassword('');
+    setProgress('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ── Render ────────────────────────────────────────────────────
+  const formatDate = (iso?: string) => {
+    if (!iso) return 'لم يتم بعد';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return 'لم يتم بعد';
+    return toLatinDigits(
+      date.toLocaleString('ar-IQ', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    );
+  };
+
+  const frequencyLabel =
+    FREQUENCY_OPTIONS.find((o) => o.value === (settings.autoBackupFrequency || 'off'))?.label || 'معطّل';
+
+  const restoreIsEncrypted = !!restoreFile?.name.includes('_encrypted');
+
   return (
     <div className="space-y-5 animate-fade-in" dir="rtl">
-      {/* ── Toasts ─────────────────────────────────────────────── */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2">
-        {toasts.map(t => (
+      {/* Toasts */}
+      <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2 space-y-2">
+        {toasts.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold text-white backdrop-blur-sm animate-fade-in ${
-              t.type === 'success' ? 'bg-emerald-600' :
-              t.type === 'error' ? 'bg-rose-600' :
-              t.type === 'warning' ? 'bg-amber-500' :
-              'bg-blue-600'
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-lg backdrop-blur-sm animate-fade-in ${
+              t.type === 'success'
+                ? 'bg-emerald-600'
+                : t.type === 'error'
+                ? 'bg-rose-600'
+                : t.type === 'warning'
+                ? 'bg-amber-500'
+                : 'bg-blue-600'
             }`}
           >
-            {t.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> :
-             t.type === 'error' ? <XCircle className="w-4 h-4" /> :
-             t.type === 'warning' ? <AlertTriangle className="w-4 h-4" /> :
-             <Info className="w-4 h-4" />}
+            {t.type === 'success' ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : t.type === 'error' ? (
+              <XCircle className="h-4 w-4" />
+            ) : t.type === 'warning' ? (
+              <AlertTriangle className="h-4 w-4" />
+            ) : (
+              <Info className="h-4 w-4" />
+            )}
             <span>{t.message}</span>
           </div>
         ))}
       </div>
 
-      {/* ── Page Header ────────────────────────────────────────── */}
-      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
-            <Database className="w-5 h-5 text-office-blue dark:text-blue-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">النسخ الاحتياطي والمزامنة</h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">حماية بيانات الطلاب من الفقدان بالنسخ المحلي أو السحابي المشفر.</p>
-          </div>
+      {/* Header */}
+      <div className="card flex items-center gap-3">
+        <div className="rounded-xl bg-primary-bg p-2.5 text-primary">
+          <Database className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-sm font-black text-main">النسخ الاحتياطي</h2>
+          <p className="text-[11px] text-muted">احفظ بياناتك واستعدها، مع نسخ احتياطي تلقائي حسب جدول تحدده.</p>
         </div>
       </div>
 
-      {/* ── Local Backup Section ───────────────────────────────── */}
-      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <HardDrive className="w-4 h-4 text-office-blue dark:text-blue-400" />
-          <h3 className="text-xs font-black text-slate-800 dark:text-slate-100">النسخ الاحتياطي المحلي</h3>
-        </div>
-
-        {/* Info row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">مجلد النسخ الاحتياطي</span>
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono break-all">{effectiveFolder || 'سطح المكتب\\Murshid Backups'}</span>
-          </div>
-          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">آخر نسخة احتياطية</span>
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{fmtDate(settings.lastLocalBackup)}</span>
-          </div>
-          <div className="bg-[#F8F6F0] rounded-xl p-3 border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block mb-1">عدد النسخ المحفوظة</span>
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{toLatinDigits(settings.backupHistory.filter(h => h.type === 'LOCAL').length)}</span>
-          </div>
-        </div>
-
-        {/* Folder display + change */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 bg-[#F8F6F0] rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800">
-            <FolderOpen className="w-3.5 h-3.5 text-slate-400 inline ml-2" />
-            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{effectiveFolder || 'سطح المكتب\\Murshid Backups'}</span>
-            {!settings.localFolder && (
-              <span className="mr-2 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">الافتراضي</span>
-            )}
+      {/* Primary actions */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="card space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <Download className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-main">نسخ احتياطي الآن</h3>
+              <p className="text-[10px] text-muted">إنشاء نسخة كاملة من بياناتك وحفظها في المجلد المحدد.</p>
+            </div>
           </div>
           <button
-            onClick={handlePickLocalFolder}
-            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+            onClick={handleBackupNow}
+            disabled={isWorking}
+            className="btn-primary flex w-full items-center justify-center gap-2 !py-2.5 text-xs disabled:opacity-60"
           >
-            <FolderOpen className="w-3.5 h-3.5" />
-            <span>اختيار مجلد</span>
+            {isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isWorking ? progress || 'جاري النسخ...' : 'نسخ احتياطي الآن'}
           </button>
-          {settings.localFolder && (
+        </div>
+
+        <div className="card space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-blue-50 p-2 text-office-blue dark:bg-blue-950/40 dark:text-blue-400">
+              <Upload className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-main">استعادة النسخة الاحتياطية</h3>
+              <p className="text-[10px] text-muted">استعادة البيانات من ملف نسخة احتياطية سابق.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowRestore(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-border-color bg-card-elevated px-4 py-2.5 text-xs font-bold text-secondary transition-colors hover:bg-hover"
+          >
+            <Upload className="h-4 w-4" />
+            استعادة النسخة الاحتياطية
+          </button>
+        </div>
+      </div>
+
+      {/* Automatic backup settings */}
+      <div className="card space-y-5">
+        <div className="flex items-center gap-2 border-b border-divider-color pb-3">
+          <CalendarClock className="h-4 w-4 text-primary" />
+          <h3 className="text-xs font-black text-main">إعدادات النسخ الاحتياطي التلقائي</h3>
+          <span className="mr-auto rounded-md bg-primary-bg px-2 py-0.5 text-[10px] font-bold text-primary">
+            {frequencyLabel}
+          </span>
+        </div>
+
+        {/* Frequency */}
+        <div className="space-y-2">
+          <span className="form-label !mb-0">التكرار</span>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {FREQUENCY_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  updateSettings({ autoBackupFrequency: option.value });
+                  addToast('success', 'تم حفظ إعدادات النسخ التلقائي.');
+                }}
+                className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
+                  (settings.autoBackupFrequency || 'off') === option.value
+                    ? 'border-primary bg-primary-bg text-primary'
+                    : 'border-border-color bg-card-elevated text-secondary hover:bg-hover'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Folder */}
+        <div className="space-y-2">
+          <span className="form-label !mb-0">مجلد الحفظ</span>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border-color bg-card-elevated px-3 py-2.5">
+              <FolderOpen className="h-4 w-4 shrink-0 text-muted" />
+              <span className="truncate font-mono text-[11px] font-bold text-secondary" title={effectiveFolder}>
+                {effectiveFolder || 'المجلد الافتراضي (سطح المكتب)'}
+              </span>
+              {!settings.localFolder && (
+                <span className="mr-auto shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  افتراضي
+                </span>
+              )}
+            </div>
             <button
-              onClick={handleResetLocalFolder}
-              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+              type="button"
+              onClick={handlePickFolder}
+              className="flex items-center justify-center gap-2 rounded-xl border border-border-color bg-card-elevated px-4 py-2.5 text-xs font-bold text-secondary transition-colors hover:bg-hover"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>الافتراضي</span>
+              <FolderOpen className="h-4 w-4" />
+              اختيار مجلد
             </button>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={handleLocalBackup}
-            disabled={isLocalWorking}
-            className="bg-office-blue hover:bg-office-hover disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 text-[11px] font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
-          >
-            {isLocalWorking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            <span>{isLocalWorking ? localProgress || 'جاري...' : 'نسخ احتياطي الآن'}</span>
-          </button>
-          <button
-            onClick={handleLocalRestore}
-            disabled={isRestoring}
-            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2 text-[11px] font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>استعادة نسخة احتياطية</span>
-          </button>
-          <div className="bg-blue-50 dark:bg-blue-950/30 text-office-blue dark:text-blue-400 px-3 py-2 text-[10px] font-bold rounded-xl border border-blue-100 dark:border-blue-900/40 flex items-center gap-1.5">
-            <Info className="w-3 h-3" />
-            <span>حجم النسخة المقدّر: {estimatedSize}</span>
           </div>
         </div>
-      </div>
 
-      {/* ── Automatic Backups ──────────────────────────────────── */}
-      <div className="card bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <Clock className="w-4 h-4 text-office-blue dark:text-blue-400" />
-          <h3 className="text-xs font-black text-slate-800 dark:text-slate-100">النسخ الاحتياطي التلقائي</h3>
+        {/* Last backup */}
+        <div className="flex items-center justify-between rounded-xl border border-border-color bg-card-elevated px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted" />
+            <span className="text-[11px] font-bold text-secondary">آخر نسخة احتياطية</span>
+          </div>
+          <span className="text-[11px] font-black text-main">{formatDate(settings.lastLocalBackup)}</span>
         </div>
 
-        <div className="space-y-2.5">
-          <button
-            onClick={() => updateSettings({ autoBackupDaily: !settings.autoBackupDaily })}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${
-              settings.autoBackupDaily
-                ? 'bg-office-blue/10 dark:bg-blue-950/40 border-office-blue/30 dark:border-blue-800 text-office-blue dark:text-blue-400'
-                : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-            }`}
-          >
-            {settings.autoBackupDaily ? <ToggleRight className="w-4 h-4 shrink-0" /> : <ToggleLeft className="w-4 h-4 shrink-0" />}
-            <HardDrive className="w-3.5 h-3.5" />
-            <span>نسخ احتياطي محلي تلقائي (يومي)</span>
-          </button>
-          <p className="text-[10px] text-slate-400">النسخ المحلي يتم عند فتح التطبيق.</p>
-        </div>
+        <p className="flex items-center gap-1.5 text-[10px] text-muted">
+          <HardDrive className="h-3.5 w-3.5" />
+          يتم إنشاء النسخة تلقائياً عند فتح البرنامج إذا حان موعد الجدول المحدد.
+        </p>
       </div>
 
-      {/* ── Backup History ─────────────────────────────────────── */}
-      <div className="card bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+      {/* Restore modal */}
+      {showRestore && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={closeRestore}
         >
-          <div className="flex items-center gap-2.5">
-            <History className="w-4 h-4 text-office-blue dark:text-blue-400" />
-            <span className="text-xs font-black text-slate-800 dark:text-slate-100">سجل النسخ الاحتياطية</span>
-            <span className="px-2 py-0.5 text-[10px] bg-blue-50 dark:bg-blue-950/50 text-office-blue dark:text-blue-400 rounded-md font-mono font-black border border-blue-100 dark:border-blue-900/40">
-              {toLatinDigits(settings.backupHistory.length)}
-            </span>
-          </div>
-          {showHistory ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-        </button>
-
-        {showHistory && (
-          <div className="border-t border-slate-100 dark:border-slate-800">
-            {settings.backupHistory.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
-                لا توجد نسخ احتياطية مسجلة بعد.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900/50">
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-500 dark:text-slate-400">التاريخ</th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-500 dark:text-slate-400">النوع</th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-500 dark:text-slate-400">الوجهة</th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-500 dark:text-slate-400">الحجم</th>
-                      <th className="px-4 py-2.5 text-[10px] font-black text-slate-500 dark:text-slate-400">الحالة</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                    {settings.backupHistory.slice(0, 20).map(entry => (
-                      <tr key={entry.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                        <td className="px-4 py-2.5 text-[11px] text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                          {fmtDate(entry.date)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md ${
-                            entry.type === 'LOCAL'
-                              ? 'bg-blue-50 dark:bg-blue-950/50 text-office-blue dark:text-blue-400 border border-blue-100 dark:border-blue-900/40'
-                              : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40'
-                          }`}>
-                            {entry.type === 'LOCAL' ? <HardDrive className="w-3 h-3" /> : <Cloud className="w-3 h-3" />}
-                            {entry.type === 'LOCAL' ? 'محلي' : 'سحابي'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                          {entry.fileName}
-                        </td>
-                        <td className="px-4 py-2.5 text-[11px] text-slate-600 dark:text-slate-400 font-bold">
-                          {toLatinDigits(entry.size)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md ${
-                            entry.status === 'SUCCESS'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
-                              : entry.status === 'FAILED'
-                              ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400'
-                              : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400'
-                          }`}>
-                            {entry.status === 'SUCCESS' ? <CheckCircle2 className="w-3 h-3" /> :
-                             entry.status === 'FAILED' ? <XCircle className="w-3 h-3" /> :
-                             <Loader2 className="w-3 h-3 animate-spin" />}
-                            {entry.status === 'SUCCESS' ? 'نجح' : entry.status === 'FAILED' ? 'فشل' : 'جاري...'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Restore from Local Modal ───────────────────────────── */}
-      {showRestoreModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowRestoreModal(false); setSelectedRestoreFile(null); setRestorePassword(''); }}>
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+          <div
+            className="w-full max-w-md space-y-4 rounded-2xl border border-border-color bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Upload className="w-5 h-5 text-office-blue dark:text-blue-400" />
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">استعادة نسخة احتياطية</h3>
+                <Upload className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-black text-main">استعادة النسخة الاحتياطية</h3>
               </div>
-              <button onClick={() => { setShowRestoreModal(false); setSelectedRestoreFile(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">
-                <XCircle className="w-5 h-5" />
+              <button onClick={closeRestore} className="text-muted transition-colors hover:text-main">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              سيؤدي هذا إلى استبدال جميع البيانات الحالية بالبيانات المحفوظة في النسخة الاحتياطية. يُنصح بعمل نسخة احتياطية أولاً.
+            <p className="text-[11px] leading-relaxed text-muted">
+              سيتم استبدال البيانات الحالية بالبيانات الموجودة في النسخة الاحتياطية. يُنصح بأخذ نسخة احتياطية أولاً.
             </p>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">اختر ملف النسخة الاحتياطية (.zip):</label>
+              <label className="form-label !mb-0">ملف النسخة الاحتياطية (.zip)</label>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".zip"
-                onChange={e => setSelectedRestoreFile(e.target.files?.[0] || null)}
-                className="w-full text-[11px] text-slate-600 dark:text-slate-400 file:ml-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-office-blue file:text-white hover:file:bg-office-hover file:cursor-pointer"
+                onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+                className="w-full text-[11px] text-secondary file:ml-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[11px] file:font-bold file:text-white hover:file:bg-primary-hover"
               />
-              {selectedRestoreFile && (
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-2 border border-slate-100 dark:border-slate-800">
-                  <FileArchive className="w-4 h-4 text-office-blue dark:text-blue-400" />
-                  <span className="text-[11px] text-slate-700 dark:text-slate-300 font-bold">{selectedRestoreFile.name}</span>
+              {restoreFile && (
+                <div className="flex items-center gap-2 rounded-lg border border-border-color bg-card-elevated p-2">
+                  <FileArchive className="h-4 w-4 text-primary" />
+                  <span className="truncate text-[11px] font-bold text-secondary">{restoreFile.name}</span>
                 </div>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">كلمة مرور التشفير (إن وُجدت):</label>
-              <input
-                type="password"
-                value={restorePassword}
-                onChange={e => setRestorePassword(e.target.value)}
-                placeholder="اتركه فارغاً إذا لم يكن مشفرراً"
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-office-blue"
-              />
-            </div>
-
-            {isRestoring && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3 border border-blue-100 dark:border-blue-900/40">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 text-office-blue dark:text-blue-400 animate-spin" />
-                  <span className="text-[11px] font-bold text-office-blue dark:text-blue-400">{localProgress}</span>
-                </div>
+            {restoreIsEncrypted && (
+              <div className="space-y-1.5">
+                <label className="form-label !mb-0">كلمة مرور النسخة</label>
+                <input
+                  type="password"
+                  value={restorePassword}
+                  onChange={(e) => setRestorePassword(e.target.value)}
+                  placeholder="أدخل كلمة المرور"
+                  className="form-input"
+                />
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
+            {isRestoring && progress && (
+              <div className="flex items-center gap-2 rounded-xl border border-primary-border bg-primary-bg p-3">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-[11px] font-bold text-primary">{progress}</span>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
               <button
-                onClick={executeLocalRestore}
-                disabled={!selectedRestoreFile || isRestoring}
-                className="flex-1 bg-office-blue hover:bg-office-hover disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 text-[11px] font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                onClick={executeRestore}
+                disabled={!restoreFile || isRestoring}
+                className="btn-primary flex flex-1 items-center justify-center gap-2 !py-2.5 text-xs disabled:opacity-60"
               >
-                {isRestoring ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                <span>{isRestoring ? 'جاري الاستعادة...' : 'تأكيد الاستعادة'}</span>
+                {isRestoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {isRestoring ? 'جاري الاستعادة...' : 'تأكيد الاستعادة'}
               </button>
               <button
-                onClick={() => { setShowRestoreModal(false); setSelectedRestoreFile(null); setRestorePassword(''); }}
+                onClick={closeRestore}
                 disabled={isRestoring}
-                className="px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                className="rounded-xl bg-card-elevated px-4 py-2.5 text-xs font-bold text-secondary transition-colors hover:bg-hover disabled:opacity-60"
               >
                 إلغاء
               </button>
@@ -503,7 +421,6 @@ export default function BackupSyncView({ onNavigateToStudents }: BackupSyncViewP
           </div>
         </div>
       )}
-
     </div>
   );
 }

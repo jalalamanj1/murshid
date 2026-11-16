@@ -83,100 +83,101 @@
   --color-input-border: var(--input-border);
 }
 
-/* ───────────────────────── Light Theme (default fallback) ───────────────────────── */
+/* ───────────────────────── Light Theme (Murshid default) ─────────────────────────
+   Palette: warm archival paper, ink typography, deep pine accent, brass detail. */
 :root {
   color-scheme: light;
-  --office-blue: #F28C24;
-  --office-hover: #FF9D2E;
-  --office-bg: #FAFAFA;
-  --sidebar-bg: #FFFFFF;
-  --bg-main: #FAFAFA;
-  --text-main: #1A2027;
-  --text-sec: #555555;
-  --text-secondary: #555555;
-  --border-color: #E8E8E8;
-  --bg-card: #FCFCFC;
+  --office-blue: #0F5C46;
+  --office-hover: #0B4A38;
+  --office-bg: #F4F1E9;
+  --sidebar-bg: #FBFAF5;
+  --bg-main: #F4F1E9;
+  --text-main: #141A17;
+  --text-sec: #46504A;
+  --text-secondary: #46504A;
+  --border-color: #E2DDD0;
+  --bg-card: #FFFFFF;
   --bg-card-elevated: #FFFFFF;
-  --bg-hover: #F7F7F7;
-  --bg-active: #FFF7ED;
-  --divider-color: #EFEFEF;
-  --text-muted: #777777;
-  --danger: #DC2626;
-  --danger-bg: #FEF2F2;
-  --success: #16A34A;
-  --warning: #D97706;
-  --primary: #F28C24;
-  --primary-hover: #FF9D2E;
-  --primary-active: #D97706;
-  --primary-bg: #FFF7ED;
-  --primary-border: #F5C58A;
-  --shadow-card: 0 6px 20px rgba(0,0,0,0.05);
-  --shadow-popup: 0 8px 28px rgba(0,0,0,0.07);
-  --shadow-modal: 0 12px 40px rgba(0,0,0,0.09);
+  --bg-hover: #F1EEE4;
+  --bg-active: #E9F2ED;
+  --divider-color: #ECE8DC;
+  --text-muted: #7A847D;
+  --danger: #B3261E;
+  --danger-bg: #FBEDEB;
+  --success: #1B7F5A;
+  --warning: #986A10;
+  --primary: #0F5C46;
+  --primary-hover: #0B4A38;
+  --primary-active: #093B2D;
+  --primary-bg: #E9F2ED;
+  --primary-border: #B9D3C6;
+  --shadow-card: 0 1px 2px rgba(20, 26, 23, 0.04);
+  --shadow-popup: 0 10px 30px rgba(20, 26, 23, 0.08);
+  --shadow-modal: 0 24px 60px rgba(20, 26, 23, 0.16);
   --input-bg: #FFFFFF;
-  --input-border: #E8E8E8;
-  --input-text: #1A2027;
-  --focus-border: #F28C24;
-  --table-header: #F5F5F5;
-  --table-row: #FCFCFC;
-  --table-row-alt: #F7F7F7;
+  --input-border: #DDD7C8;
+  --input-text: #141A17;
+  --focus-border: #0F5C46;
+  --table-header: #F7F5EE;
+  --table-row: #FFFFFF;
+  --table-row-alt: #FBFAF5;
   --window-bg: #FFFFFF;
-  --hover-bg: #FFF6EB;
-  --scrollbar-thumb: #D0D0D0;
+  --hover-bg: #F1EEE4;
+  --scrollbar-thumb: #CFC8B6;
   --scrollbar-track: transparent;
-  --icon-color: #555555;
-  --icon-accent: #F28C24;
+  --icon-color: #5C665F;
+  --icon-accent: #0F5C46;
   --primary-button-text: #FFFFFF;
-  --primary-button-hover: #FF9D2E;
-  --overlay: rgba(15, 23, 42, 0.5);
+  --primary-button-hover: #0B4A38;
+  --overlay: rgba(15, 26, 21, 0.45);
 }
 
-/* ───────────────────────── Dark Theme (Murshid default) ───────────────────────── */
+/* ───────────────────────── Dark Theme ───────────────────────── */
 .dark {
   color-scheme: dark;
-  --office-blue: #F28C24;
-  --office-hover: #FF9D2E;
-  --office-bg: #0B0E15;
-  --sidebar-bg: #0D121A;
-  --bg-main: #0D1118;
-  --text-main: #F5F7FA;
-  --text-sec: #C7CDD5;
-  --text-secondary: #C7CDD5;
-  --border-color: #232A34;
-  --bg-card: #111720;
-  --bg-card-elevated: #161D26;
-  --bg-hover: #1A222D;
-  --bg-active: #151D27;
-  --divider-color: #2A313B;
-  --text-muted: #8D96A3;
-  --danger: #EF4444;
-  --danger-bg: #2A1417;
-  --success: #22C55E;
-  --warning: #EAB308;
-  --primary: #F28C24;
-  --primary-hover: #FF9D2E;
-  --primary-active: #D97706;
-  --primary-bg: #2A1D10;
-  --primary-border: #70400F;
-  --shadow-card: 0 8px 30px rgba(0,0,0,0.20);
-  --shadow-popup: 0 8px 30px rgba(0,0,0,0.22);
-  --shadow-modal: 0 12px 40px rgba(0,0,0,0.28);
-  --input-bg: #111720;
-  --input-border: #2A313B;
-  --input-text: #F5F7FA;
-  --focus-border: #F28C24;
-  --table-header: #161D26;
-  --table-row: #111720;
-  --table-row-alt: #161D26;
-  --window-bg: #0B0E15;
-  --hover-bg: #1A222D;
-  --scrollbar-thumb: #2A313B;
-  --scrollbar-track: #0B0E15;
-  --icon-color: #8D96A3;
-  --icon-accent: #F28C24;
-  --primary-button-text: #FFFFFF;
-  --primary-button-hover: #FF9D2E;
-  --overlay: rgba(0, 0, 0, 0.6);
+  --office-blue: #4FC79B;
+  --office-hover: #66D8AF;
+  --office-bg: #0A0D0C;
+  --sidebar-bg: #0D1210;
+  --bg-main: #0A0D0C;
+  --text-main: #EEF1EB;
+  --text-sec: #B4BDB5;
+  --text-secondary: #B4BDB5;
+  --border-color: #232B26;
+  --bg-card: #101614;
+  --bg-card-elevated: #141B18;
+  --bg-hover: #17201C;
+  --bg-active: #14251E;
+  --divider-color: #1D2621;
+  --text-muted: #828D85;
+  --danger: #F0796F;
+  --danger-bg: #2A1715;
+  --success: #4FC79B;
+  --warning: #D8A84A;
+  --primary: #4FC79B;
+  --primary-hover: #66D8AF;
+  --primary-active: #3FB385;
+  --primary-bg: #10261D;
+  --primary-border: #1F4636;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-popup: 0 14px 34px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 28px 70px rgba(0, 0, 0, 0.55);
+  --input-bg: #0F1513;
+  --input-border: #26302A;
+  --input-text: #EEF1EB;
+  --focus-border: #4FC79B;
+  --table-header: #131A17;
+  --table-row: #101614;
+  --table-row-alt: #141B18;
+  --window-bg: #0A0D0C;
+  --hover-bg: #17201C;
+  --scrollbar-thumb: #2A342E;
+  --scrollbar-track: transparent;
+  --icon-color: #828D85;
+  --icon-accent: #4FC79B;
+  --primary-button-text: #06231A;
+  --primary-button-hover: #66D8AF;
+  --overlay: rgba(0, 0, 0, 0.62);
 }
 
 * {
@@ -196,23 +197,6 @@ body, body * {
 /* Horizontally scrollable navigation: keep the scroll affordance invisible. */
 .nav-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .nav-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
-
-/* Lock screen: gentle drift for the floating passcode characters, and a
-   shake for a wrong pick. Inline styles apply per-chip duration/delay. */
-@keyframes lock-drift {
-  0%   { transform: translate(0, 0) rotate(0deg); }
-  25%  { transform: translate(var(--dx, 24px), var(--dy, -16px)) rotate(var(--rot, 4deg)); }
-  50%  { transform: translate(calc(var(--dx, 24px) * -0.6), var(--dy, 16px)) rotate(calc(var(--rot, 4deg) * -1)); }
-  75%  { transform: translate(calc(var(--dx, 24px) * 0.4), calc(var(--dy, 16px) * -0.8)) rotate(0deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
-@keyframes lock-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-14px); }
-  40% { transform: translateX(12px); }
-  60% { transform: translateX(-8px); }
-  80% { transform: translateX(6px); }
-}
 
 /* Navigation transitions.
    The `*` rule above is unlayered, so it outranks every Tailwind `transition-*`
@@ -244,7 +228,7 @@ body {
 
 /* ── Semantic channel / status identity (work in both themes) ── */
 .channel-emerald { background-color: rgba(34, 197, 94, 0.10); color: #22C55E; border-color: rgba(34, 197, 94, 0.25); }
-.channel-amber   { background-color: rgba(242, 140, 36, 0.10); color: #F28C24; border-color: rgba(242, 140, 36, 0.25); }
+.channel-amber   { background-color: rgba(169, 124, 63, 0.10); color: #9C7433; border-color: rgba(169, 124, 63, 0.25); }
 .channel-blue    { background-color: rgba(59, 130, 246, 0.10); color: #3B82F6; border-color: rgba(59, 130, 246, 0.25); }
 .channel-rose    { background-color: rgba(239, 68, 68, 0.10); color: #EF4444; border-color: rgba(239, 68, 68, 0.25); }
 .channel-cyan    { background-color: rgba(6, 182, 212, 0.10); color: #06B6D4; border-color: rgba(6, 182, 212, 0.25); }
@@ -315,48 +299,72 @@ body {
 .shadow-md { box-shadow: var(--shadow-popup) !important; }
 .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: var(--shadow-modal) !important; }
 
-.rounded-xl { border-radius: 14px !important; }
-.rounded-lg { border-radius: 12px !important; }
-.rounded-md { border-radius: 10px !important; }
-.rounded-2xl { border-radius: 18px !important; }
+.rounded-xl { border-radius: 12px !important; }
+.rounded-lg { border-radius: 10px !important; }
+.rounded-md { border-radius: 8px !important; }
+.rounded-2xl { border-radius: 14px !important; }
+
+/* ── Typographic helpers for the editorial layout ── */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+.kicker::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  opacity: 0.55;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
 
 .btn-primary {
-  background-color: var(--office-blue) !important;
+  background-color: var(--primary) !important;
   color: var(--primary-button-text) !important;
-  border-radius: 12px !important;
-  padding: 10px 24px !important;
+  border-radius: 9px !important;
+  padding: 9px 18px !important;
   font-weight: 700 !important;
-  font-size: 13px !important;
-  border: none !important;
+  font-size: 12.5px !important;
+  border: 1px solid transparent !important;
+  box-shadow: var(--shadow-card) !important;
   cursor: pointer !important;
-  transition: background-color 0.2s ease !important;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
   font-family: "Cairo", sans-serif !important;
   line-height: 1.4 !important;
 }
-.btn-primary:hover { background-color: var(--primary-button-hover) !important; }
+.btn-primary:hover { background-color: var(--primary-hover) !important; }
 
 .btn-secondary {
-  background-color: var(--bg-card-elevated) !important;
-  color: var(--text-secondary) !important;
-  border-radius: 12px !important;
-  padding: 10px 24px !important;
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-radius: 9px !important;
+  padding: 9px 18px !important;
   font-weight: 700 !important;
-  font-size: 13px !important;
-  border: 1.5px solid var(--border-color) !important;
+  font-size: 12.5px !important;
+  border: 1px solid var(--border-color) !important;
   cursor: pointer !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
   font-family: "Cairo", sans-serif !important;
   line-height: 1.4 !important;
 }
-.btn-secondary:hover { background-color: var(--bg-hover) !important; }
+.btn-secondary:hover { background-color: var(--bg-hover) !important; border-color: var(--text-muted) !important; }
 
 .btn-danger {
   background-color: var(--danger) !important;
   color: #FFFFFF !important;
-  border-radius: 12px !important;
-  padding: 10px 24px !important;
+  border-radius: 9px !important;
+  padding: 9px 18px !important;
   font-weight: 700 !important;
-  font-size: 13px !important;
+  font-size: 12.5px !important;
   border: none !important;
   cursor: pointer !important;
   font-family: "Cairo", sans-serif !important;
@@ -366,18 +374,17 @@ body {
 .card {
   background-color: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: 18px !important;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
-  padding: 24px !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-card) !important;
+  padding: 22px !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
-
 .form-input, input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], select, textarea {
   background-color: var(--input-bg) !important;
-  border: 1.5px solid var(--input-border) !important;
-  border-radius: 12px !important;
-  padding: 10px 14px !important;
-  font-size: 13px !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: 9px !important;
+  padding: 9px 12px !important;
+  font-size: 12.5px !important;
   color: var(--input-text) !important;
   font-family: "Cairo", sans-serif !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
@@ -387,9 +394,27 @@ body {
 .form-input:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
   border-color: var(--focus-border) !important;
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(242, 140, 36, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(15, 92, 70, 0.12) !important;
 }
 .form-input::placeholder, input::placeholder, textarea::placeholder { color: var(--text-muted) !important; font-family: "Cairo", sans-serif !important; }
+
+/* Dark-theme hardening: never allow a white field with light text. */
+.dark input,
+.dark select,
+.dark textarea,
+.dark .form-input {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--input-border) !important;
+}
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus,
+.dark .form-input:focus {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--focus-border) !important;
+}
 
 .form-label {
   font-weight: 700 !important;

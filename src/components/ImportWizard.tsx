@@ -20,6 +20,10 @@ interface ImportWizardProps<T> {
   onClose: () => void;
   /** Optional per-field value transforms applied after mapping (e.g. class grade conversion) */
   transforms?: Record<string, (val: string) => string>;
+  /** When set, columns not mapped to a fixed field are stored under this key as a header→value map. */
+  extraFieldsKey?: string;
+  /** Copy that explains unmapped columns are preserved instead of rejected. */
+  keepUnmapped?: boolean;
 }
 
 type Step = 'upload' | 'mapping' | 'summary' | 'importing' | 'done';
@@ -33,6 +37,8 @@ export default function ImportWizard<T>({
   onImport,
   onClose,
   transforms,
+  extraFieldsKey,
+  keepUnmapped = false,
 }: ImportWizardProps<T>) {
   const [step, setStep] = useState<Step>('upload');
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
@@ -97,7 +103,7 @@ export default function ImportWizard<T>({
     const interval = setInterval(() => {
       if (idx >= excelData.rows.length) {
         clearInterval(interval);
-        const result = importData(excelData.rows, mapping, factory, fieldKeys, transforms);
+        const result = importData(excelData.rows, mapping, factory, fieldKeys, transforms, extraFieldsKey);
         if (result.items.length > 0) {
           onImport(result.items);
         }
@@ -163,15 +169,19 @@ export default function ImportWizard<T>({
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {excelData.headers.map(header => {
                   const mapped = mapping[header];
-                  const field = formFields.find(f => f.key === mapped);
                   const isUnmatched = !mapped;
+                  const tone = isUnmatched && !keepUnmapped;
                   return (
-                    <div key={header} className={`flex items-center gap-3 p-2 rounded-lg border ${isUnmatched ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 dark:bg-[#0f172a] border-slate-200 dark:border-slate-800'}`}>
-                      <span className={`text-xs font-bold w-1/3 truncate ${isUnmatched ? 'text-rose-700' : 'text-slate-700 dark:text-slate-300'}`} title={header}>{header}</span>
+                    <div key={header} className={`flex items-center gap-3 p-2 rounded-lg border ${tone ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 dark:bg-[#0f172a] border-slate-200 dark:border-slate-800'}`}>
+                      <span className={`text-xs font-bold w-1/3 truncate ${tone ? 'text-rose-700' : 'text-slate-700 dark:text-slate-300'}`} title={header}>{header}</span>
                       <span className="text-slate-400 shrink-0">←</span>
                       <select value={mapped || ''} onChange={e => setMappingFor(header, e.target.value)}
-                        className={`flex-1 bg-card border rounded-lg px-2 py-1.5 text-xs outline-none ${isUnmatched ? 'border-rose-300' : 'border-slate-200 dark:border-slate-800'}`}>
-                        <option value="">{isUnmatched ? '-- عمود غير مرتبط --' : '-- إلغاء الربط --'}</option>
+                        className={`flex-1 bg-card border rounded-lg px-2 py-1.5 text-xs outline-none ${tone ? 'border-rose-300' : 'border-slate-200 dark:border-slate-800'}`}>
+                        <option value="">
+                          {isUnmatched
+                            ? keepUnmapped ? '-- حفظ كقسم إضافي --' : '-- عمود غير مرتبط --'
+                            : '-- إلغاء الربط --'}
+                        </option>
                         <option value="ignore">تجاهل هذا العمود</option>
                         <optgroup label="حقول النموذج">
                           {formFields.map(f => (
@@ -180,7 +190,7 @@ export default function ImportWizard<T>({
                             </option>
                           ))}
                         </optgroup>
-                        <option value="custom">إنشاء حقل جديد...</option>
+                        {!keepUnmapped && <option value="custom">إنشاء حقل جديد...</option>}
                       </select>
                       {mapped === 'custom' && (
                         <input type="text" placeholder="اسم الحقل" value={customNames[header] || ''}
@@ -216,13 +226,22 @@ export default function ImportWizard<T>({
               </div>
 
               {summary.unmatched.length > 0 && (
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                  <p className="text-[11px] font-bold text-rose-700 mb-1">الأعمدة التالية غير موجودة في النموذج الحالي:</p>
-                  <ul className="text-[11px] text-rose-600 space-y-0.5">
-                    {summary.unmatched.map(h => <li key={h} className="flex items-center gap-1"><AlertCircle className="w-3 h-3" />{h}</li>)}
-                  </ul>
-                  <button onClick={() => setStep('mapping')} className="text-[11px] text-office-blue hover:underline font-bold mt-2 cursor-pointer">ربطها يدوياً</button>
-                </div>
+                keepUnmapped ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                    <p className="text-[11px] font-bold text-blue-800 mb-1">ستُحفظ هذه الأعمدة كأقسام إضافية في ملف كل طالب:</p>
+                    <ul className="text-[11px] text-blue-700 space-y-0.5">
+                      {summary.unmatched.map(h => <li key={h} className="flex items-center gap-1"><Sparkles className="w-3 h-3" />{h}</li>)}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+                    <p className="text-[11px] font-bold text-rose-700 mb-1">الأعمدة التالية غير موجودة في النموذج الحالي:</p>
+                    <ul className="text-[11px] text-rose-600 space-y-0.5">
+                      {summary.unmatched.map(h => <li key={h} className="flex items-center gap-1"><AlertCircle className="w-3 h-3" />{h}</li>)}
+                    </ul>
+                    <button onClick={() => setStep('mapping')} className="text-[11px] text-office-blue hover:underline font-bold mt-2 cursor-pointer">ربطها يدوياً</button>
+                  </div>
+                )
               )}
 
               {summary.missingRequired.length > 0 && (

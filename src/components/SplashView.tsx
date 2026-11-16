@@ -38,11 +38,11 @@ export default function SplashView({ onComplete }: SplashViewProps) {
           clearInterval(timer);
           setTimeout(() => {
             setOpacity(0);
-            setTimeout(onComplete, 500);
-          }, 500);
+            setTimeout(onComplete, 250);
+          }, 250);
           return 100;
         }
-        return prev + 1;
+        return prev + 4;
       });
     }, 30);
 

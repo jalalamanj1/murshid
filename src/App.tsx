@@ -319,18 +319,115 @@ export default function App() {
     saveSpecialCases([]);
   };
 
-  const handleDeleteStudent = (id: string) => {
-    const updated = students.filter(s => s.id !== id);
-    setStudents(updated);
-    saveStudents(updated);
-    const updatedRecords = records.filter(r => r.studentId !== id);
-    setRecords(updatedRecords);
-    saveRecords(updatedRecords);
+  const relatedRecordCount = (ids: string[]) => {
+    const remove = new Set(ids);
+    const matches = (studentId?: string) => Boolean(studentId && remove.has(studentId));
+    return (
+      records.filter(r => matches(r.studentId)).length +
+      healthRecords.filter(r => matches(r.studentId)).length +
+      parentLossRecords.filter(r => matches(r.studentId)).length +
+      caseStudies.filter(r => matches(r.studentId)).length +
+      specialCases.filter(r => matches(r.studentId) || (r.studentIds || []).some(id => remove.has(id))).length
+    );
   };
+
+  /**
+   * Delete students. With `deleteRelatedRecords`, every register is purged;
+   * otherwise the records are kept as history and only detached from the
+   * student so no record points at a deleted id.
+   */
+  const deleteStudents = (ids: string[], deleteRelatedRecords = false) => {
+    const remove = new Set(ids);
+    const updatedStudents = students.filter(s => !remove.has(s.id));
+    setStudents(updatedStudents);
+    saveStudents(updatedStudents);
+
+    const detachedRecords = records.map(r =>
+      r.studentId && remove.has(r.studentId) ? { ...r, studentId: '' } : r
+    );
+    const detachedHealth = healthRecords.map(r =>
+      r.studentId && remove.has(r.studentId) ? { ...r, studentId: '' } : r
+    );
+    const detachedParentLoss = parentLossRecords.map(r =>
+      r.studentId && remove.has(r.studentId) ? { ...r, studentId: '' } : r
+    );
+    const detachedCases = caseStudies.map(r =>
+      r.studentId && remove.has(r.studentId) ? { ...r, studentId: '' } : r
+    );
+
+    // Special cases can cover several students at once.
+    const stripSpecialCases = (dropEmpty: boolean) =>
+      specialCases.flatMap(record => {
+        const studentIds = record.studentIds || [];
+        if (studentIds.length === 0) {
+          if (record.studentId && remove.has(record.studentId)) {
+            return dropEmpty ? [] : [{ ...record, studentId: '', studentIds: [], studentNames: [] }];
+          }
+          return [record];
+        }
+
+        const keepIds: string[] = [];
+        const keepNames: string[] = [];
+        studentIds.forEach((id, index) => {
+          if (!remove.has(id)) {
+            keepIds.push(id);
+            keepNames.push((record.studentNames || [])[index] || '');
+          }
+        });
+
+        if (keepIds.length === 0) {
+          return dropEmpty ? [] : [{ ...record, studentId: '', studentIds: [], studentNames: [] }];
+        }
+        return [{
+          ...record,
+          studentIds: keepIds,
+          studentNames: keepNames,
+          studentId: keepIds[0],
+          studentName: keepNames[0] || record.studentName,
+        }];
+      });
+
+    const nextRecords = deleteRelatedRecords
+      ? records.filter(r => !(r.studentId && remove.has(r.studentId)))
+      : detachedRecords;
+    const nextHealth = deleteRelatedRecords
+      ? healthRecords.filter(r => !(r.studentId && remove.has(r.studentId)))
+      : detachedHealth;
+    const nextParentLoss = deleteRelatedRecords
+      ? parentLossRecords.filter(r => !(r.studentId && remove.has(r.studentId)))
+      : detachedParentLoss;
+    const nextCases = deleteRelatedRecords
+      ? caseStudies.filter(r => !(r.studentId && remove.has(r.studentId)))
+      : detachedCases;
+    const nextSpecialCases = deleteRelatedRecords ? stripSpecialCases(true) : stripSpecialCases(false);
+
+    setRecords(nextRecords);
+    saveRecords(nextRecords);
+    setHealthRecords(nextHealth);
+    saveHealthRecords(nextHealth);
+    setParentLossRecords(nextParentLoss);
+    saveParentLossRecords(nextParentLoss);
+    setCaseStudies(nextCases);
+    saveCaseStudies(nextCases);
+    setSpecialCases(nextSpecialCases);
+    saveSpecialCases(nextSpecialCases);
+  };
+
+  const handleDeleteStudent = (id: string) => deleteStudents([id], false);
 
 
 
   // Render the core active module inside the Content Area
+  const dashboardRecordCounts: Partial<Record<RecordType, number>> = {
+    HEALTH_STATUS: healthRecords.length,
+    SPECIAL_CASES: specialCases.length,
+    GROUP_INDIVIDUAL: counselingSessions.length,
+    BEREAVED_STUDENTS: parentLossRecords.length,
+    CASE_STUDY: caseStudies.length,
+    HEALTH_KEY_GUIDE: caseStudies.filter(c => c.status === 'CLOSED').length,
+    DAILY_ACTIVITY_PLAN: records.filter(r => r.recordType === 'DAILY_ACTIVITY_PLAN').length,
+  };
+
   const renderActiveModuleContent = () => {
     switch (activeModule) {
       case 'DASHBOARD':
@@ -418,6 +515,7 @@ export default function App() {
                     onClearStudentsAndCases={handleClearStudentsAndCases}
             onOpenRecordsForType={openRecordList}
             onCreateRecordForType={openRecordForm}
+            recordCounts={dashboardRecordCounts}
           />
         );
 
@@ -449,14 +547,8 @@ export default function App() {
               });
             }}
             onDeleteStudent={handleDeleteStudent}
-            onDeleteStudents={(ids) => {
-              const remove = new Set(ids);
-              setStudents(prev => {
-                const updated = prev.filter(student => !remove.has(student.id));
-                saveStudents(updated);
-                return updated;
-              });
-            }}
+            onDeleteStudents={deleteStudents}
+            getStudentRelatedCount={relatedRecordCount}
             onOpenRecords={() => setActiveModule('RECORDS')}
           />
         );
@@ -1079,48 +1171,97 @@ export default function App() {
     }
   };
 
+  /** Stable content signature used to avoid importing the same record twice. */
+  const importSignature = (kind: RecordImportResult['kind'], record: any): string => {
+    const norm = (value: unknown) => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+    let parts: unknown[] = [];
+    switch (kind) {
+      case 'health':
+        parts = [record.studentName, record.grade, record.section, record.diseaseType, record.diseaseDescription, record.procedures, record.address];
+        break;
+      case 'parentLoss':
+        parts = [record.studentName, record.lossType, record.livesWith, record.academicLevelBeforeLoss, record.academicLevelAfterLoss, record.studentBehavior, record.additionalNotes];
+        break;
+      case 'session':
+        parts = [record.sessionTitle, record.sessionDate, record.generalObjective, record.specificObjectives, record.activity];
+        break;
+      case 'caseStudy':
+        parts = [record.studentName, record.caseNumber, record.referralSource, record.caseDate, (record.caseTypes || []).join(','), record.livesWith];
+        break;
+      case 'specialCase':
+        parts = [record.studentName, record.category, record.talentType, record.delayType, record.absenceType, record.procedures];
+        break;
+      default:
+        parts = [record.recordType, record.date, record.title, record.description];
+        break;
+    }
+    return parts.map(norm).join('|');
+  };
+
   /** Merge records imported from DOCX/Excel files through Settings. */
-  const handleImportRecordResult = (result: RecordImportResult) => {
+  const handleImportRecordResult = (result: RecordImportResult): number => {
+    const fresh = (list: any[], kind: RecordImportResult['kind']) => {
+      const seen = new Set(list.map((record) => importSignature(kind, record)));
+      return (result.records as any[]).filter((record) => {
+        const key = importSignature(kind, record);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
+
     switch (result.kind) {
       case 'health': {
-        const imported = result.records as HealthRecord[];
-        const updated = [...imported, ...healthRecords];
-        setHealthRecords(updated);
-        saveHealthRecords(updated);
-        break;
+        const imported = fresh(healthRecords, 'health') as HealthRecord[];
+        if (imported.length) {
+          const updated = [...imported, ...healthRecords];
+          setHealthRecords(updated);
+          saveHealthRecords(updated);
+        }
+        return imported.length;
       }
       case 'parentLoss': {
-        const imported = result.records as ParentLossRecord[];
-        const updated = [...imported, ...parentLossRecords];
-        setParentLossRecords(updated);
-        saveParentLossRecords(updated);
-        break;
+        const imported = fresh(parentLossRecords, 'parentLoss') as ParentLossRecord[];
+        if (imported.length) {
+          const updated = [...imported, ...parentLossRecords];
+          setParentLossRecords(updated);
+          saveParentLossRecords(updated);
+        }
+        return imported.length;
       }
       case 'caseStudy': {
-        const imported = result.records as CaseStudy[];
-        const updated = [...imported, ...caseStudies];
-        setCaseStudies(updated);
-        saveCaseStudies(updated);
-        break;
+        const imported = fresh(caseStudies, 'caseStudy') as CaseStudy[];
+        if (imported.length) {
+          const updated = [...imported, ...caseStudies];
+          setCaseStudies(updated);
+          saveCaseStudies(updated);
+        }
+        return imported.length;
       }
       case 'session': {
-        const imported = result.records as CounselingSession[];
-        const updated = [...imported, ...counselingSessions];
-        setCounselingSessions(updated);
-        saveCounselingSessions(updated);
-        break;
+        const imported = fresh(counselingSessions, 'session') as CounselingSession[];
+        if (imported.length) {
+          const updated = [...imported, ...counselingSessions];
+          setCounselingSessions(updated);
+          saveCounselingSessions(updated);
+        }
+        return imported.length;
       }
       case 'specialCase': {
-        const imported = result.records as SpecialCaseRecord[];
-        const updated = [...imported, ...specialCases];
-        setSpecialCases(updated);
-        saveSpecialCases(updated);
-        break;
+        const imported = fresh(specialCases, 'specialCase') as SpecialCaseRecord[];
+        if (imported.length) {
+          const updated = [...imported, ...specialCases];
+          setSpecialCases(updated);
+          saveSpecialCases(updated);
+        }
+        return imported.length;
       }
       case 'counseling':
       default: {
         const imported = result.records as CounselingRecord[];
         let updated = [...records];
+        let added = 0;
+
         for (const rec of imported) {
           if (rec.recordType === 'DAILY_ACTIVITY_PLAN') {
             const index = updated.findIndex(
@@ -1137,6 +1278,7 @@ export default function App() {
               const additions = (rec.activities || []).filter(
                 (activity) => !seen.has(`${activity.activity}|${activity.location}|${activity.details}`)
               );
+              if (additions.length === 0) continue;
               const merged = [...existingActivities, ...additions].map((activity, order) => ({
                 ...activity,
                 displayOrder: order,
@@ -1154,14 +1296,20 @@ export default function App() {
                 activities: merged,
                 updatedAt: new Date().toISOString(),
               };
+              added += 1;
               continue;
             }
           }
+
+          const signature = importSignature('counseling', rec);
+          if (updated.some((r) => importSignature('counseling', r) === signature)) continue;
           updated = [rec, ...updated];
+          added += 1;
         }
+
         setRecords(updated);
         saveRecords(updated);
-        break;
+        return added;
       }
     }
   };

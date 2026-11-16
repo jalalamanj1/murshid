@@ -43,6 +43,7 @@ interface DashboardViewProps {
   onClearStudentsAndCases?: () => void;
   onOpenRecordsForType?: (recordType: RecordType) => void;
   onCreateRecordForType?: (recordType: RecordType) => void;
+  recordCounts?: Partial<Record<RecordType, number>>;
 }
 
 const RECORD_TYPES_INFO: {
@@ -136,6 +137,7 @@ export default function DashboardViewRedesigned({
   onQuickAddRecord,
   onOpenRecordsForType,
   onCreateRecordForType,
+  recordCounts,
 }: DashboardViewProps) {
   const totalStudents = students.length;
   const totalClasses = new Set(
@@ -267,6 +269,11 @@ export default function DashboardViewRedesigned({
                     <span className="min-w-0 flex-1 truncate text-[10px] text-muted">
                       {item.desc}
                     </span>
+                    {recordCounts?.[item.type] !== undefined && (
+                      <span className="num shrink-0 rounded-md border border-border-color bg-card-elevated px-1.5 py-0.5 text-[9.5px] font-bold text-sec">
+                        {toLatinDigits(recordCounts[item.type] || 0)}
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {

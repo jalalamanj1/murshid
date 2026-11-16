@@ -14,7 +14,6 @@ autoUpdater.autoDownload = false; // downloads are driven (and retried) below
 const DOWNLOAD_ATTEMPTS = 6;
 const RETRY_DELAY_MS = 5000;
 const DAY_MS = 24 * 60 * 60 * 1000;      // grace period before the forced update
-const DEFER_MS = 6 * 60 * 60 * 1000;      // do not nag again for 6 hours
 const ENFORCE_INTERVAL_MS = 60 * 1000;    // deadline check
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // background re-check
 
@@ -296,14 +295,13 @@ function installUpdate() {
   }
 }
 
-/** "لاحقاً": hide the prompt, but the 24h deadline keeps running. */
+/** "لاحقاً": hide the prompt for good; the 24h deadline keeps running. */
 function deferUpdate() {
   const state = loadState();
   if (!state) return { ok: true };
-  const deadline = deadlineOf(state);
-  state.dismissedUntil = Math.min(deadline, Date.now() + DEFER_MS);
+  state.dismissedUntil = deadlineOf(state);
   saveState();
-  return { ok: true, deadline };
+  return { ok: true, deadline: deadlineOf(state) };
 }
 
 function isUpdateAvailable() {

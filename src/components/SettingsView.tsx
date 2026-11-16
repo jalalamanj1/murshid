@@ -44,7 +44,7 @@ interface SettingsViewProps {
   saveFolder: string;
   onPickSaveFolder: () => void;
   students?: Student[];
-  onImportRecords?: (result: RecordImportResult) => void;
+  onImportRecords?: (result: RecordImportResult) => number | void;
 }
 
 type LockMessage = { type: 'success' | 'error'; text: string } | null;

@@ -30,7 +30,7 @@ import {
 interface RecordsImportModalProps {
   students: Student[];
   onClose: () => void;
-  onImport: (result: RecordImportResult) => void;
+  onImport: (result: RecordImportResult) => number | void;
 }
 
 interface SectionDef {
@@ -100,8 +100,27 @@ interface SectionState {
   busy?: boolean;
   error?: string;
   result?: RecordImportResult;
+  selected?: boolean[];
   imported?: number;
   category?: SpecialCaseCategory;
+}
+
+function recordSummary(kind: RecordImportKind, record: any): string {
+  switch (kind) {
+    case 'health':
+      return `${record.studentName || '—'} — ${record.diseaseType || 'بدون نوع مرض'}`;
+    case 'parentLoss':
+      return `${record.studentName || '—'} — ${record.lossType || 'بدون نوع فقدان'}`;
+    case 'session':
+      return record.sessionTitle || record.sessionNumber || 'جلسة';
+    case 'caseStudy':
+      return `${record.studentName || 'حالة'} — ${record.caseNumber || ''}`;
+    case 'specialCase':
+      return `${record.studentName || '—'} — ${record.talentType || record.delayType || record.absenceType || 'حالة خاصة'}`;
+    case 'counseling':
+    default:
+      return `${record.day || ''} ${record.date || ''} — ${(record.activities || []).length} نشاط`;
+  }
 }
 
 export default function RecordsImportModal({ students, onClose, onImport }: RecordsImportModalProps) {
@@ -128,13 +147,13 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
           warnings,
           detail: `${days.length} ${days.length === 1 ? 'يوم' : 'أيام'} · ${activityCount} نشاطاً`,
         };
-        patch(kind, { busy: false, result });
+        patch(kind, { busy: false, result, selected: records.map(() => true) });
         return;
       }
 
       const maps = await parseRecordFile(file, kind);
       const result = buildRecords(kind, maps, { students, category });
-      patch(kind, { busy: false, result });
+      patch(kind, { busy: false, result, selected: result.records.map(() => true) });
     } catch (err) {
       patch(kind, { busy: false, error: err instanceof Error ? err.message : 'تعذر قراءة الملف.' });
     }
@@ -143,10 +162,34 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
   const confirmImport = (kind: RecordImportKind) => {
     const state = states[kind];
     if (!state?.result) return;
-    onImport(state.result);
-    patch(kind, { imported: state.result.records.length, result: undefined, fileName: undefined });
+
+    const chosen = state.result.records.filter((_, index) => state.selected?.[index] !== false);
+    if (chosen.length === 0) return;
+
+    const added = onImport({ ...state.result, records: chosen });
+    patch(kind, {
+      imported: typeof added === 'number' ? added : chosen.length,
+      result: undefined,
+      selected: undefined,
+      fileName: undefined,
+    });
     const input = inputs.current[kind];
     if (input) input.value = '';
+  };
+
+  const toggleRecord = (kind: RecordImportKind, index: number) => {
+    const state = states[kind];
+    if (!state?.selected) return;
+    const next = [...state.selected];
+    next[index] = !next[index];
+    patch(kind, { selected: next });
+  };
+
+  const toggleAllRecords = (kind: RecordImportKind) => {
+    const state = states[kind];
+    if (!state?.result) return;
+    const allSelected = state.selected?.every(Boolean);
+    patch(kind, { selected: state.result.records.map(() => !allSelected) });
   };
 
   return (
@@ -173,6 +216,10 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
           {SECTIONS.map((section) => {
             const Icon = section.icon;
             const state = states[section.kind] || {};
+            const selectedCount = state.result
+              ? (state.selected ? state.selected.filter(Boolean).length : state.result.records.length)
+              : 0;
+            const allSelected = Boolean(state.selected?.length) && state.selected!.every(Boolean);
             return (
               <section
                 key={section.kind}
@@ -224,9 +271,10 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
                       <button
                         type="button"
                         onClick={() => confirmImport(section.kind)}
-                        className="btn-primary !px-3 !py-1.5 !text-[10.5px]"
+                        disabled={selectedCount === 0}
+                        className="btn-primary !px-3 !py-1.5 !text-[10.5px] disabled:opacity-50"
                       >
-                        استيراد {state.result.records.length} سجل
+                        استيراد {selectedCount} سجل
                       </button>
                     )}
                   </div>
@@ -267,6 +315,41 @@ export default function RecordsImportModal({ students, onClose, onImport }: Reco
                     </p>
                   )}
                 </div>
+
+                {state.result && state.result.records.length > 0 && (
+                  <div className="mt-2 overflow-hidden rounded-[10px] border border-border-color">
+                    <div className="flex items-center justify-between gap-2 border-b border-divider-color px-3 py-1.5">
+                      <label className="flex items-center gap-1.5 text-[10px] font-bold text-sec cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() => toggleAllRecords(section.kind)}
+                          className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                        />
+                        تحديد الكل
+                      </label>
+                      <span className="text-[9.5px] text-muted">راجع السجلات قبل الاستيراد</span>
+                    </div>
+                    <ul className="max-h-[160px] overflow-y-auto">
+                      {state.result.records.map((record, index) => (
+                        <li
+                          key={index}
+                          className="flex items-center gap-2 border-b border-divider-color px-3 py-1.5 last:border-0"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={state.selected?.[index] !== false}
+                            onChange={() => toggleRecord(section.kind, index)}
+                            className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-[10.5px] text-main">
+                            {recordSummary(section.kind, record)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </section>
             );
           })}

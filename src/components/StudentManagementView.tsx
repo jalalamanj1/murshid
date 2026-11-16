@@ -31,7 +31,8 @@ interface StudentManagementViewProps {
   onImportStudents?: (students: Student[]) => void;
   onUpdateStudent: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
-  onDeleteStudents?: (ids: string[]) => void;
+  onDeleteStudents?: (ids: string[], deleteRelatedRecords?: boolean) => void;
+  getStudentRelatedCount?: (ids: string[]) => number;
   onOpenRecords?: () => void;
 }
 
@@ -39,14 +40,19 @@ type SortField = 'fullName' | 'classGrade' | 'birthDate' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 export default function StudentManagementView({
-  students, records, profile, onAddStudent, onImportStudents, onUpdateStudent, onDeleteStudent, onDeleteStudents, onOpenRecords
+  students, records, profile, onAddStudent, onImportStudents, onUpdateStudent, onDeleteStudent, onDeleteStudents, getStudentRelatedCount, onOpenRecords
 }: StudentManagementViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('fullName');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filterGrade, setFilterGrade] = useState('');
+  const [filterSection, setFilterSection] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [importNotice, setImportNotice] = useState('');
+  const [deleteRequest, setDeleteRequest] = useState<{ ids: string[]; label: string } | null>(null);
+  const [deleteRelated, setDeleteRelated] = useState(false);
+  const PAGE_SIZE = 25;
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -103,10 +109,15 @@ export default function StudentManagementView({
       result = result.filter(s =>
         s.fullName.toLowerCase().includes(term) ||
         (s.fatherName && s.fatherName.toLowerCase().includes(term)) ||
+        (s.nationalId && s.nationalId.toLowerCase().includes(term)) ||
+        (s.fatherPhone && s.fatherPhone.includes(term)) ||
+        (s.motherPhone && s.motherPhone.includes(term)) ||
+        (s.altPhone && s.altPhone.includes(term)) ||
         s.classGrade.toLowerCase().includes(term)
       );
     }
     if (filterGrade) result = result.filter(s => s.classGrade === filterGrade);
+    if (filterSection) result = result.filter(s => (s.section || '') === filterSection);
     result.sort((a, b) => {
       const aVal = (a[sortField] || '').toString();
       const bVal = (b[sortField] || '').toString();
@@ -114,7 +125,20 @@ export default function StudentManagementView({
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return result;
-  }, [students, searchTerm, sortField, sortDir, filterGrade]);
+  }, [students, searchTerm, sortField, sortDir, filterGrade, filterSection]);
+
+  const sectionOptions = useMemo(
+    () => Array.from(new Set(students.map(s => (s.section || '').trim()).filter(Boolean))).sort(),
+    [students]
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterGrade, filterSection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -131,18 +155,34 @@ export default function StudentManagementView({
   };
 
   const allFilteredSelected =
-    filteredStudents.length > 0 && filteredStudents.every(student => selectedIds.includes(student.id));
+    pageStudents.length > 0 && pageStudents.every(student => selectedIds.includes(student.id));
 
   const toggleSelectAll = () => {
-    setSelectedIds(allFilteredSelected ? [] : filteredStudents.map(student => student.id));
+    if (allFilteredSelected) {
+      const pageIds = new Set(pageStudents.map(student => student.id));
+      setSelectedIds(prev => prev.filter(id => !pageIds.has(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...pageStudents.map(student => student.id)])));
+    }
   };
 
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`حذف ${toLatinDigits(selectedIds.length)} طالباً/طالبة؟ لا يمكن التراجع عن الحذف.`)) return;
-    if (onDeleteStudents) onDeleteStudents(selectedIds);
-    else selectedIds.forEach(id => onDeleteStudent(id));
-    setSelectedIds([]);
+    setDeleteRelated(false);
+    setDeleteRequest({
+      ids: [...selectedIds],
+      label: `${toLatinDigits(selectedIds.length)} طالباً/طالبة`,
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteRequest) return;
+    if (onDeleteStudents) onDeleteStudents(deleteRequest.ids, deleteRelated);
+    else deleteRequest.ids.forEach(id => onDeleteStudent(id));
+    const removed = new Set(deleteRequest.ids);
+    setSelectedIds(prev => prev.filter(id => !removed.has(id)));
+    setDeleteRequest(null);
+    setDeleteRelated(false);
   };
 
   const resetForm = () => {
@@ -421,13 +461,18 @@ export default function StudentManagementView({
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" placeholder="بحث بالاسم..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+            <input type="text" placeholder="بحث بالاسم، رقم البطاقة، الهاتف أو الصف..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
               className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg pr-10 pl-3 py-2 text-xs outline-none focus:ring-1 focus:ring-office-blue" />
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
             className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs outline-none">
             <option value="">جميع الصفوف</option>
             {GetGradesFromProfile(profile).map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
+            className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs outline-none">
+            <option value="">جميع الشعب</option>
+            {sectionOptions.map(section => <option key={section} value={section}>شعبة {section}</option>)}
           </select>
         </div>
       </div>
@@ -485,7 +530,7 @@ export default function StudentManagementView({
                   <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                   <p className="text-xs font-bold text-slate-400 dark:text-slate-500">{searchTerm || filterGrade ? 'لا توجد نتائج' : 'لا يوجد طالب مسجل'}</p>
                 </td></tr>
-              ) : filteredStudents.map(student => (
+              ) : pageStudents.map(student => (
                 <tr key={student.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-950/10 transition-colors">
                   <td className="p-2 text-center">
                     <input
@@ -513,7 +558,7 @@ export default function StudentManagementView({
                       <button onClick={() => handleViewStudent(student)} className="p-1.5 text-slate-400 hover:text-office-blue dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="عرض الملف"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => handleStartEdit(student)} className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="تعديل"><Edit className="w-4 h-4" /></button>
                       <button onClick={() => handleExportStudentData(student)} className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors" title="تصدير"><Download className="w-4 h-4" /></button>
-                      <button onClick={() => { if (confirm(`حذف الطالب (${student.fullName})؟`)) { onDeleteStudent(student.id); setSelectedIds(prev => prev.filter(id => id !== student.id)); } }} className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50/50 dark:hover:bg-rose-950/20 cursor-pointer transition-colors" title="حذف"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => { setDeleteRelated(false); setDeleteRequest({ ids: [student.id], label: student.fullName }); }} className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50/50 dark:hover:bg-rose-950/20 cursor-pointer transition-colors" title="حذف"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -521,7 +566,91 @@ export default function StudentManagementView({
             </tbody>
           </table>
         </div>
+
+        {filteredStudents.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-slate-200 dark:border-slate-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">
+              عرض {toLatinDigits((currentPage - 1) * PAGE_SIZE + 1)}–
+              {toLatinDigits(Math.min(currentPage * PAGE_SIZE, filteredStudents.length))} من{' '}
+              {toLatinDigits(filteredStudents.length)}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-[10.5px] font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40"
+              >
+                السابق
+              </button>
+              <span className="px-2 text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                {toLatinDigits(currentPage)} / {toLatinDigits(pageCount)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage(Math.min(pageCount, currentPage + 1))}
+                disabled={currentPage === pageCount}
+                className="rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 py-1 text-[10.5px] font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40"
+              >
+                التالي
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {deleteRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border-color bg-card shadow-2xl">
+            <div className="border-b border-divider-color px-5 py-4">
+              <h3 className="text-sm font-black text-main">تأكيد الحذف</h3>
+              <p className="mt-1 text-[11px] leading-relaxed text-sec">
+                سيتم حذف {deleteRequest.label} من قائمة الطلبة. لا يمكن التراجع عن هذه العملية.
+              </p>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              {(() => {
+                const related = getStudentRelatedCount ? getStudentRelatedCount(deleteRequest.ids) : 0;
+                if (related === 0) {
+                  return <p className="text-[10.5px] text-muted">لا توجد سجلات إرشادية مرتبطة بهذا الطالب.</p>;
+                }
+                return (
+                  <label className="flex items-start gap-2.5 rounded-xl border border-border-color bg-card-elevated px-3 py-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deleteRelated}
+                      onChange={(event) => setDeleteRelated(event.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                    />
+                    <span className="text-[10.5px] leading-relaxed text-main">
+                      <span className="font-bold">حذف سجلاته الإرشادية أيضاً ({toLatinDigits(related)})</span>
+                      <span className="mt-0.5 block text-muted">
+                        إذا تركت هذا الخيار فارغاً، ستبقى السجلات محفوظة كسجل تاريخي مع اسم الطالب.
+                      </span>
+                    </span>
+                  </label>
+                );
+              })()}
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-divider-color px-5 py-3">
+              <button
+                type="button"
+                onClick={() => { setDeleteRequest(null); setDeleteRelated(false); }}
+                className="btn-secondary !px-4 !py-2 !text-[11px]"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="btn-danger !px-4 !py-2 !text-[11px]"
+              >
+                حذف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAddDialog && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">

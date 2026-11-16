@@ -32,6 +32,7 @@ import { isExcludedField, FIELD_LABELS } from '../lib/exportFields';
 import { academicYear, toLatinDigits } from '../lib/format';
 import { localTodayISO, dayFromDate } from '../lib/dateUtils';
 import { CounselingRecord, RecordType, Student, DailyActivityItem, CounselorProfile } from '../types';
+import BulkDeleteBar from './BulkDeleteBar';
 
 interface RecordsListViewProps {
   recordType: RecordType;
@@ -42,6 +43,7 @@ interface RecordsListViewProps {
   onAddRecord: (newRecord: CounselingRecord) => void;
   onUpdateRecord?: (updatedRecord: CounselingRecord) => void;
   onDeleteRecord: (id: string) => void;
+  onDeleteMany?: (ids: string[]) => void;
   onBack: () => void;
   /** Opened from a dashboard "add" action: show the entry form immediately. */
   startInAddForm?: boolean;
@@ -93,6 +95,7 @@ export default function RecordsListView({
   onAddRecord,
   onUpdateRecord,
   onDeleteRecord,
+  onDeleteMany,
   onBack,
   startInAddForm = false,
 }: RecordsListViewProps) {
@@ -300,6 +303,28 @@ export default function RecordsListView({
 
   // Filter records matching this type
   const filteredRecords = records.filter(rec => rec.recordType === recordType);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => records.some(record => record.id === id)));
+  }, [records]);
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]));
+
+  const allSelected = filteredRecords.length > 0 && filteredRecords.every(rec => selectedIds.includes(rec.id));
+
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? [] : filteredRecords.map(rec => rec.id));
+
+  const deleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`حذف ${toLatinDigits(selectedIds.length)} سجلاً؟`)) return;
+    if (onDeleteMany) onDeleteMany(selectedIds);
+    else selectedIds.forEach(onDeleteRecord);
+    setSelectedIds([]);
+  };
 
   // Auto detect today's date (the day name derives from the date automatically)
   const handleAutoFill = () => {
@@ -557,6 +582,15 @@ export default function RecordsListView({
         </div>
 
         <div className="flex gap-2">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+            />
+            تحديد الكل
+          </label>
           {isDailyActivityRecord && (
             <button
               onClick={() => setShowExportDialog(true)}
@@ -903,6 +937,13 @@ export default function RecordsListView({
                   {/* Card Header Bar */}
                   <div className="bg-slate-50 dark:bg-[#0f172a] px-4 py-3.5 flex justify-between items-center border-b border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(rec.id)}
+                        onChange={() => toggleSelected(rec.id)}
+                        aria-label={`تحديد السجل ${rec.title}`}
+                        className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                      />
                       <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/40">
                         <Compass className="w-4 h-4 animate-pulse" />
                       </div>
@@ -1040,6 +1081,13 @@ export default function RecordsListView({
                 {/* Standard Card Title Header Bar */}
                 <div className="bg-slate-50 dark:bg-[#0f172a] px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(rec.id)}
+                      onChange={() => toggleSelected(rec.id)}
+                      aria-label={`تحديد السجل ${rec.title}`}
+                      className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                    />
                     <span className="text-xs font-black text-slate-900 dark:text-slate-100">
                       {rec.title}
                     </span>
@@ -1406,6 +1454,8 @@ export default function RecordsListView({
           </div>
         </div>
       )}
+
+      <BulkDeleteBar count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={deleteSelected} />
     </div>
   );
 }

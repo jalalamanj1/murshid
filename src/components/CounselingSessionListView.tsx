@@ -7,12 +7,13 @@
  * session detail (read-only) or switches to edit mode.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ArrowRight, Plus, Trash2, Edit3, Search, Calendar,
   MessageCircle, ListChecks, ChevronDown, ChevronUp, Target, Activity,
 } from 'lucide-react';
 import { CounselingSession, CounselorProfile } from '../types';
+import BulkDeleteBar from './BulkDeleteBar';
 import { toLatinDigits } from '../lib/format';
 
 function fmtDate(iso: string) {
@@ -25,12 +26,14 @@ interface Props {
   profile: CounselorProfile;
   onEdit: (s: CounselingSession) => void;
   onDelete: (id: string) => void;
+  onDeleteMany?: (ids: string[]) => void;
   onBack: () => void;
   onNew?: () => void;
 }
 
-export default function CounselingSessionListView({ sessions, profile, onEdit, onDelete, onBack, onNew }: Props) {
+export default function CounselingSessionListView({ sessions, profile, onEdit, onDelete, onDeleteMany, onBack, onNew }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -46,6 +49,26 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
       s.activity.toLowerCase().includes(q)
     );
   }, [sessions, search]);
+
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => sessions.some(record => record.id === id)));
+  }, [sessions]);
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]));
+
+  const allSelected = filtered.length > 0 && filtered.every(record => selectedIds.includes(record.id));
+
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? [] : filtered.map(record => record.id));
+
+  const deleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`حذف ${toLatinDigits(selectedIds.length)} جلسة؟`)) return;
+    if (onDeleteMany) onDeleteMany(selectedIds);
+    else selectedIds.forEach(onDelete);
+    setSelectedIds([]);
+  };
 
   // ── Detail View ──────────────────────────────────────────────
   if (selected) {
@@ -186,16 +209,27 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
             <p className="text-[11px] text-slate-400">{toLatinDigits(filtered.length)} جلسة مسجلة</p>
           </div>
         </div>
-        {onNew && (
-          <button
-            type="button"
-            onClick={onNew}
-            className="bg-office-blue hover:bg-office-hover text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>تدوين جلسة جديدة</span>
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+            />
+            تحديد الكل
+          </label>
+          {onNew && (
+            <button
+              type="button"
+              onClick={onNew}
+              className="bg-office-blue hover:bg-office-hover text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>تدوين جلسة جديدة</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -225,6 +259,13 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
                 className="card card-hover bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-office-blue/30 dark:hover:border-blue-800 transition-all group">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(s.id)}
+                      onChange={() => toggleSelected(s.id)}
+                      aria-label={`تحديد جلسة ${s.sessionTitle}`}
+                      className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                    />
                     <span className="text-[10px] font-black text-office-blue dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40 font-mono">
                       {s.sessionNumber}
                     </span>
@@ -311,6 +352,8 @@ export default function CounselingSessionListView({ sessions, profile, onEdit, o
           })}
         </div>
       )}
+
+      <BulkDeleteBar count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={deleteSelected} />
     </div>
   );
 }

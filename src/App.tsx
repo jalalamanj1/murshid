@@ -617,6 +617,12 @@ export default function App() {
                   saveCaseStudies(updated);
                 }}
                 onNew={() => { setEditingCase(undefined); setCaseStudyMode('CREATE'); }}
+                onDeleteMany={(ids) => {
+                  const remove = new Set(ids);
+                  const updated = caseStudies.filter(c => !remove.has(c.id));
+                  setCaseStudies(updated);
+                  saveCaseStudies(updated);
+                }}
                 onBack={() => setSelectedRecordType(null)}
               />
             </>
@@ -674,6 +680,12 @@ export default function App() {
                   saveCounselingSessions(updated);
                 }}
                 onNew={() => { setEditingSession(undefined); setCounselingSessionMode('CREATE'); }}
+                onDeleteMany={(ids) => {
+                  const remove = new Set(ids);
+                  const updated = counselingSessions.filter(x => !remove.has(x.id));
+                  setCounselingSessions(updated);
+                  saveCounselingSessions(updated);
+                }}
                 onBack={() => setSelectedRecordType(null)}
               />
             </>
@@ -761,6 +773,12 @@ export default function App() {
                 setSpecialCases(updated);
                 saveSpecialCases(updated);
               }}
+              onDeleteMany={(ids) => {
+                const remove = new Set(ids);
+                const updated = specialCases.filter(x => !remove.has(x.id));
+                setSpecialCases(updated);
+                saveSpecialCases(updated);
+              }}
               onBack={() => {
                 setSpecialCaseMode('CATEGORY_SELECT');
                 setSelectedSpecialCaseCategory(undefined);
@@ -828,6 +846,12 @@ export default function App() {
                   saveHealthRecords(updated);
                 }}
                 onNew={() => { setEditingHealthRecord(undefined); setHealthRecordMode('CREATE'); }}
+                onDeleteMany={(ids) => {
+                  const remove = new Set(ids);
+                  const updated = healthRecords.filter(x => !remove.has(x.id));
+                  setHealthRecords(updated);
+                  saveHealthRecords(updated);
+                }}
                 onBack={() => {
                   setSelectedRecordType(null);
                   setHealthRecordMode('LIST');
@@ -895,6 +919,12 @@ export default function App() {
                   saveParentLossRecords(updated);
                 }}
                 onNew={() => { setEditingParentLoss(undefined); setParentLossMode('CREATE'); }}
+                onDeleteMany={(ids) => {
+                  const remove = new Set(ids);
+                  const updated = parentLossRecords.filter(x => !remove.has(x.id));
+                  setParentLossRecords(updated);
+                  saveParentLossRecords(updated);
+                }}
                 onBack={() => {
                   setSelectedRecordType(null);
                   setParentLossMode('LIST');
@@ -952,6 +982,12 @@ export default function App() {
               }}
               onDeleteRecord={(recordId) => {
                 const updated = records.filter(r => r.id !== recordId);
+                setRecords(updated);
+                saveRecords(updated);
+              }}
+              onDeleteMany={(ids) => {
+                const remove = new Set(ids);
+                const updated = records.filter(r => !remove.has(r.id));
                 setRecords(updated);
                 saveRecords(updated);
               }}

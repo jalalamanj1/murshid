@@ -6,12 +6,13 @@
  * Supports PDF and Excel export per record.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ArrowRight, Trash2, Edit3, Search,
   GraduationCap, HeartOff, FileText, Download, X, Plus,
 } from 'lucide-react';
 import { ParentLossRecord, Student } from '../types';
+import BulkDeleteBar from './BulkDeleteBar';
 import { exportParentLossRecordPdf } from './ParentLossRecordPdfExport';
 import { toLatinDigits } from '../lib/format';
 
@@ -25,13 +26,15 @@ interface Props {
   students: Student[];
   onEdit: (r: ParentLossRecord) => void;
   onDelete: (id: string) => void;
+  onDeleteMany?: (ids: string[]) => void;
   onBack: () => void;
   onNew?: () => void;
 }
 
-export default function ParentLossRecordListView({ records, students, onEdit, onDelete, onBack, onNew }: Props) {
+export default function ParentLossRecordListView({ records, students, onEdit, onDelete, onDeleteMany, onBack, onNew }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const selected = useMemo(() => records.find(r => r.id === selectedId) || null, [records, selectedId]);
 
@@ -50,6 +53,26 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
       );
     });
   }, [records, search]);
+
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => records.some(record => record.id === id)));
+  }, [records]);
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]));
+
+  const allSelected = filtered.length > 0 && filtered.every(record => selectedIds.includes(record.id));
+
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? [] : filtered.map(record => record.id));
+
+  const deleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`حذف ${toLatinDigits(selectedIds.length)} سجلاً؟`)) return;
+    if (onDeleteMany) onDeleteMany(selectedIds);
+    else selectedIds.forEach(onDelete);
+    setSelectedIds([]);
+  };
 
   const handleExportExcel = (r: ParentLossRecord) => {
     import('xlsx').then(XLSX => {
@@ -173,16 +196,27 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
             <p className="text-[11px] text-slate-400">{toLatinDigits(filtered.length)} سجل مسجل</p>
           </div>
         </div>
-        {onNew && (
-          <button
-            type="button"
-            onClick={onNew}
-            className="bg-office-blue hover:bg-office-hover text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>تدوين سجل جديد</span>
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+            />
+            تحديد الكل
+          </label>
+          {onNew && (
+            <button
+              type="button"
+              onClick={onNew}
+              className="bg-office-blue hover:bg-office-hover text-white text-xs font-black py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>تدوين سجل جديد</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -210,6 +244,14 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
               className="card card-hover bg-white dark:bg-[#1e293b] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-violet-300/50 dark:hover:border-violet-800 transition-all cursor-pointer group">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(r.id)}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={() => toggleSelected(r.id)}
+                    aria-label={`تحديد سجل ${r.studentName}`}
+                    className="h-3.5 w-3.5 accent-[var(--primary)] cursor-pointer"
+                  />
                   <span className="text-[10px] font-black text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2 py-0.5 rounded-md border border-violet-100 dark:border-violet-900/40 font-mono">
                     {r.recordNumber}
                   </span>
@@ -244,6 +286,8 @@ export default function ParentLossRecordListView({ records, students, onEdit, on
           ))}
         </div>
       )}
+
+      <BulkDeleteBar count={selectedIds.length} onClear={() => setSelectedIds([])} onDelete={deleteSelected} />
     </div>
   );
 }

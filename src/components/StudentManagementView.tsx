@@ -63,6 +63,7 @@ export default function StudentManagementView({
   const [formName, setFormName] = useState('');
   const [formGrade, setFormGrade] = useState('');
   const [formSection, setFormSection] = useState('');
+  const [formCustomFields, setFormCustomFields] = useState<Record<string, string>>({});
   const [formBirthDate, setFormBirthDate] = useState('');
   const [formNationalId, setFormNationalId] = useState('');
   const [formSiblingOrder, setFormSiblingOrder] = useState('');
@@ -186,7 +187,7 @@ export default function StudentManagementView({
   };
 
   const resetForm = () => {
-    setFormName(''); setFormGrade(''); setFormSection(''); setFormBirthDate(''); setFormNationalId('');
+    setFormName(''); setFormGrade(''); setFormSection(''); setFormCustomFields({}); setFormBirthDate(''); setFormNationalId('');
     setFormSiblingOrder(''); setFormAddress(''); setFormFatherName(''); setFormFatherAlive('');
     setFormFatherEducation(''); setFormFatherJob(''); setFormFatherPhone(''); setFormFatherDeathInfo('');
     setFormMotherName(''); setFormMotherAlive(''); setFormMotherEducation(''); setFormMotherJob('');
@@ -202,6 +203,7 @@ export default function StudentManagementView({
     const split = splitClassGrade(student.classGrade);
     setFormGrade(student.section ? student.classGrade : split.grade);
     setFormSection(student.section || split.section);
+    setFormCustomFields({ ...(student.customFields || {}) });
     setFormBirthDate(student.birthDate);
     setFormNationalId(student.nationalId); setFormSiblingOrder(student.siblingOrder); setFormAddress(student.address);
     setFormFatherName(student.fatherName); setFormFatherAlive(student.fatherAlive);
@@ -231,6 +233,7 @@ export default function StudentManagementView({
       fullName: formName.trim(),
       classGrade: formGrade.trim(),
       section: formSection.trim() || undefined,
+      customFields: Object.keys(formCustomFields).length > 0 ? formCustomFields : undefined,
       birthDate: formBirthDate,
       nationalId: formNationalId,
       siblingOrder: formSiblingOrder,
@@ -260,12 +263,24 @@ export default function StudentManagementView({
       academicDelay: formAcademicDelay,
       talents: formTalents,
     };
+    if (!editingStudent) {
+      const key = identityOf(studentData);
+      if (students.some(s => identityOf(s) === key)) {
+        alert('هذا الطالب مسجل مسبقاً بنفس الاسم والصف والشعبة وتاريخ الميلاد.');
+        return;
+      }
+    }
     if (editingStudent) onUpdateStudent(studentData);
     else onAddStudent(studentData);
     resetForm(); setEditingStudent(null); setShowAddDialog(false);
   };
 
   const getStudentRecordCount = (studentId: string) => records.filter(r => r.studentId === studentId).length;
+
+  const identityOf = (s: Student) =>
+    [s.fullName, s.classGrade, s.section || '', s.birthDate || '']
+      .map(normalizeHeader)
+      .join('|');
 
   const handleImportStudents = (items: Student[]) => {
     // Imported sheets may carry the section inside the class column ("7A" or
@@ -277,11 +292,6 @@ export default function StudentManagementView({
     });
 
     // Skip students that already exist or repeat inside the same file.
-    const identityOf = (s: Student) =>
-      [s.fullName, s.classGrade, s.section || '', s.birthDate || '']
-        .map(normalizeHeader)
-        .join('|');
-
     const seen = new Set(students.map(identityOf));
     const fresh: Student[] = [];
     for (const student of normalized) {
@@ -724,6 +734,50 @@ export default function StudentManagementView({
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">ما الحالة النفسية / الجسدية التي يعاني منها الطالب؟ مثال (انطواء - انعزال - ضعف في السمع - ضعف في النظر) إن وجدت:</label><input type="text" value={formMentalState} onChange={e => setFormMentalState(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">هل توجد سنوات رسوب أو تأخير في الدراسة؟ يرجى ذكرها مع السبب إن وجدت:</label><input type="text" value={formAcademicDelay} onChange={e => setFormAcademicDelay(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 dark:text-slate-400 block">هل يملك الطالب مواهب؟ يرجى ذكرها:</label><input type="text" value={formTalents} onChange={e => setFormTalents(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-office-blue" /></div>
+
+              {Object.keys(formCustomFields).length > 0 && (
+                <div className="space-y-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#0f172a]/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400">
+                      أقسام إضافية مستوردة من Excel
+                    </p>
+                    <span className="text-[9px] text-slate-400">يمكن تعديل قيمها أو حذفها</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Object.entries(formCustomFields).map(([label, value]) => (
+                      <div key={label} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate" title={label}>
+                            {label}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormCustomFields(prev => {
+                                const next = { ...prev };
+                                delete next[label];
+                                return next;
+                              })
+                            }
+                            className="text-slate-300 hover:text-rose-500 cursor-pointer"
+                            title="حذف هذا القسم"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(event) =>
+                            setFormCustomFields(prev => ({ ...prev, [label]: event.target.value }))
+                          }
+                          className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs outline-none focus:ring-1 focus:ring-office-blue"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button type="button" onClick={() => { setShowAddDialog(false); setEditingStudent(null); resetForm(); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold px-4 py-2 rounded-lg text-xs transition-colors cursor-pointer">إلغاء</button>

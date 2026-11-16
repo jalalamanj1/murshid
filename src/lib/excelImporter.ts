@@ -191,7 +191,9 @@ export function buildImportSummary(
   mapping: ImportMapping,
 ): ImportSummary {
   const matchedFields = new Set(Object.values(mapping));
-  const autoCount = Object.keys(mapping).filter(h => excelHeaders.includes(h)).length;
+  const autoCount = Object.keys(mapping).filter(
+    h => excelHeaders.includes(h) && mapping[h] !== 'ignore' && mapping[h] !== 'custom'
+  ).length;
 
   const unmatched = excelHeaders.filter(h => !mapping[h]);
 
@@ -199,7 +201,8 @@ export function buildImportSummary(
     f.required && !matchedFields.has(f.key)
   );
 
-  const manuallyMapped = Object.keys(mapping).length - autoCount;
+  const manuallyMapped =
+    Object.keys(mapping).filter(h => mapping[h] !== 'ignore' && mapping[h] !== 'custom').length - autoCount;
 
   return {
     totalColumns: excelHeaders.length,

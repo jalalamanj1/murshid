@@ -52,6 +52,10 @@ const uid = () => `imp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const nowIso = () => new Date().toISOString();
 const clean = (v: unknown) => String(v ?? '').replace(/\s+/g, ' ').trim();
 
+/** A map is worth importing only when at least one value has a letter/number. */
+const hasContent = (map: LabelMap) =>
+  Object.values(map).some((value) => /[\p{L}\p{N}]/u.test(clean(value)));
+
 // ── Parsing ──────────────────────────────────────────────────────────
 
 function decodeXmlEntities(text: string): string {
@@ -293,7 +297,9 @@ export async function parseRecordFile(file: File, kind?: RecordImportKind): Prom
     // A case study spans several tables; every other register uses one table
     // per record (or one row per student).
     if (kind === 'caseStudy') {
-      return groupCaseStudyMaps(blocks).map((map) => ({ ...paragraphMap, ...map }));
+      return groupCaseStudyMaps(blocks)
+        .filter(hasContent)
+        .map((map) => ({ ...paragraphMap, ...map }));
     }
 
     const maps: LabelMap[] = [];
@@ -301,8 +307,9 @@ export async function parseRecordFile(file: File, kind?: RecordImportKind): Prom
       if (block.type === 'table') maps.push(...tableToMaps(block.table));
     }
 
-    if (maps.length > 0) return maps.map((map) => ({ ...paragraphMap, ...map }));
-    return Object.keys(paragraphMap).length > 0 ? [paragraphMap] : [];
+    const usable = maps.filter(hasContent);
+    if (usable.length > 0) return usable.map((map) => ({ ...paragraphMap, ...map }));
+    return hasContent(paragraphMap) ? [paragraphMap] : [];
   }
 
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
@@ -318,14 +325,16 @@ export async function parseRecordFile(file: File, kind?: RecordImportKind): Prom
         const label = clean(values[0]);
         if (label) map[label] = clean(values[1]);
       }
-      return [map];
+      return hasContent(map) ? [map] : [];
     }
 
-    return data.rows.map((row) => {
-      const map: LabelMap = {};
-      for (const [label, value] of Object.entries(row)) map[clean(label)] = clean(value);
-      return map;
-    });
+    return data.rows
+      .map((row) => {
+        const map: LabelMap = {};
+        for (const [label, value] of Object.entries(row)) map[clean(label)] = clean(value);
+        return map;
+      })
+      .filter(hasContent);
   }
 
   throw new Error('صيغة الملف غير مدعومة. استخدم DOCX أو XLSX.');
@@ -825,7 +834,7 @@ export function buildRecords(
   const warnings: string[] = [];
   const stamp = Date.now();
 
-  maps.forEach((map, index) => {
+  maps.filter(hasContent).forEach((map, index) => {
     const { values, recognized: hits } = readFields(map, specs);
     recognized += hits;
     totalFields += specs.length;

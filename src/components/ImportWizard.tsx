@@ -79,8 +79,8 @@ export default function ImportWizard<T>({
   const setMappingFor = (header: string, value: string) => {
     setMapping(prev => {
       const next = { ...prev };
-      if (!value || value === 'ignore') delete next[header];
-      else next[header] = value;
+      if (!value) delete next[header];
+      else next[header] = value; // keep "ignore" so the importer can skip it
       return next;
     });
   };

@@ -38,6 +38,8 @@ interface RepoLibraryViewProps {
   repoKey: RepoKey;
   title: string;
   mode?: 'library' | 'covers';
+  /** Values injected into cover documents before saving/printing. */
+  coverValues?: Record<string, string>;
 }
 
 function extensionOf(name: string): string {
@@ -67,7 +69,7 @@ function formatTime(value: number | null): string {
   return new Date(value).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export default function RepoLibraryView({ repoKey, title, mode = 'library' }: RepoLibraryViewProps) {
+export default function RepoLibraryView({ repoKey, title, mode = 'library', coverValues }: RepoLibraryViewProps) {
   const api = (window as any).electronAPI;
   const [files, setFiles] = useState<RepoFile[]>([]);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -142,12 +144,12 @@ export default function RepoLibraryView({ repoKey, title, mode = 'library' }: Re
         const result = await api.repo.open(repoKey, file.path);
         if (!result?.ok) notify('error', result?.error || 'تعذر فتح الملف.');
       } else if (action === 'save') {
-        const result = await api.repo.save(repoKey, file.path, file.name);
+        const result = await api.repo.save(repoKey, file.path, file.name, mode === 'covers' ? coverValues : undefined);
         if (result?.canceled) return;
         if (!result?.ok) notify('error', result?.error || 'تعذر حفظ الملف.');
         else notify('success', `تم حفظ الملف: ${result.filePath || file.name}`);
       } else {
-        const result = await api.repo.print(repoKey, file.path);
+        const result = await api.repo.print(repoKey, file.path, mode === 'covers' ? coverValues : undefined);
         if (!result?.ok) notify('error', result?.error || 'تعذرت الطباعة.');
         else if (result.note) notify('success', result.note);
         else notify('success', 'تم إرسال الملف إلى الطابعة.');

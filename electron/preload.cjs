@@ -68,8 +68,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     list: (key) => ipcRenderer.invoke('repo:list', key),
     sync: (key) => ipcRenderer.invoke('repo:sync', key),
     open: (key, path) => ipcRenderer.invoke('repo:open', key, path),
-    save: (key, path, suggestedName) => ipcRenderer.invoke('repo:save', key, path, suggestedName),
-    print: (key, path) => ipcRenderer.invoke('repo:print', key, path),
+    save: (key, path, suggestedName, values) => ipcRenderer.invoke('repo:save', key, path, suggestedName, values),
+    print: (key, path, values) => ipcRenderer.invoke('repo:print', key, path, values),
     hasPrinter: () => ipcRenderer.invoke('repo:has-printer'),
     onUpdate: (callback) => {
       const handler = (_event, data) => callback(data);

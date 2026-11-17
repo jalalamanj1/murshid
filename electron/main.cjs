@@ -1039,17 +1039,17 @@ ipcMain.handle('repo:open', async (_event, key, relPath) => {
   }
 });
 
-ipcMain.handle('repo:save', async (_event, key, relPath, suggestedName) => {
+ipcMain.handle('repo:save', async (_event, key, relPath, suggestedName, values) => {
   try {
-    return await repoSync.saveAs(key, relPath, suggestedName);
+    return await repoSync.saveAs(key, relPath, suggestedName, values);
   } catch (err) {
     return { ok: false, error: err.message };
   }
 });
 
-ipcMain.handle('repo:print', async (_event, key, relPath) => {
+ipcMain.handle('repo:print', async (_event, key, relPath, values) => {
   try {
-    return await repoSync.printFile(key, relPath);
+    return await repoSync.printFile(key, relPath, values);
   } catch (err) {
     return { ok: false, error: err.message };
   }

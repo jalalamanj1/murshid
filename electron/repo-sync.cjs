@@ -14,6 +14,7 @@ const path = require('path');
 const https = require('https');
 const { pathToFileURL } = require('url');
 const { execFile } = require('child_process');
+const { fillDocxBuffer } = require('./docx-fill.cjs');
 
 const OWNER = 'jalalamanj1';
 
@@ -367,8 +368,23 @@ async function openFile(key, relPath) {
   return err ? { ok: false, error: err } : { ok: true };
 }
 
-async function saveAs(key, relPath, suggestedName) {
+/**
+ * For the covers library, produce a filled copy of the DOCX with the same text
+ * boxes and formatting, leaving the downloaded original untouched.
+ */
+function filledCopy(key, relPath, values) {
   const source = localPathFor(key, relPath);
+  if (key !== 'covers' || !values || !/\.docx$/i.test(relPath)) return source;
+  const buffer = fs.readFileSync(source);
+  const filled = fillDocxBuffer(buffer, values);
+  const target = path.join(paths().cacheRoot, key, '__filled__', relPath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, filled);
+  return target;
+}
+
+async function saveAs(key, relPath, suggestedName, values) {
+  const source = filledCopy(key, relPath, values);
   if (!fs.existsSync(source)) return { ok: false, error: 'الملف غير متوفر محلياً بعد.' };
   const result = await dialog.showSaveDialog(_mainWindow, {
     defaultPath: suggestedName || path.basename(source),
@@ -417,8 +433,8 @@ function printWithOffice(file) {
   });
 }
 
-async function printFile(key, relPath) {
-  const source = localPathFor(key, relPath);
+async function printFile(key, relPath, values) {
+  const source = filledCopy(key, relPath, values);
   if (!fs.existsSync(source)) return { ok: false, error: 'الملف غير متوفر محلياً بعد.' };
   if (!(await hasPrinter())) return { ok: false, error: NO_PRINTER };
 

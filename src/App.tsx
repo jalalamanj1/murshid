@@ -70,7 +70,7 @@ import ExportSection from './components/ExportSection';
 import SettingsView from './components/SettingsView';
 import UpdatePrompt from './components/UpdatePrompt';
 import type { RecordImportResult } from './lib/recordFileImport';
-import { toLatinDigits } from './lib/format';
+import { academicYear, toLatinDigits } from './lib/format';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
 import {
   getActivationStatus,
@@ -481,6 +481,13 @@ export default function App() {
 
 
   // Render the core active module inside the Content Area
+  const coverValues: Record<string, string> = {
+    school_name: profile.schoolName || '',
+    academic_year: profile.academicYear ? academicYear(profile.academicYear) : '',
+    title: profile.counselorGender === 'FEMALE' ? 'مرشدة تربوية' : 'مرشد تربوي',
+    counselor_name: profile.fullName || '',
+  };
+
   const dashboardRecordCounts: Partial<Record<RecordType, number>> = {
     HEALTH_STATUS: healthRecords.length,
     SPECIAL_CASES: specialCases.length,
@@ -1117,7 +1124,7 @@ export default function App() {
         );
 
       case 'TEMPLATES':
-        return <RepoLibraryView repoKey="covers" title="أغلفة السجلات" mode="covers" />;
+        return <RepoLibraryView repoKey="covers" title="أغلفة السجلات" mode="covers" coverValues={coverValues} />;
 
       case 'BACKUP':
         return <BackupSyncView />;

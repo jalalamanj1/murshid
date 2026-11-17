@@ -91,7 +91,7 @@ function Preview({ file, source, repoKey }: { file: RepoFile; source?: RepoFile;
         alt=""
         loading="lazy"
         onError={() => setFailed(true)}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
       />
     );
   }

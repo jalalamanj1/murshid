@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, safeStorage, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -168,6 +168,14 @@ const updateManager = require('./update-manager.cjs');
 // ── Public repository libraries (files / letters / covers) ────────────
 const repoSync = require('./repo-sync.cjs');
 
+// Allow the renderer to display cached repository files (images/PDFs) inline.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'murshid-repo',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+  },
+]);
+
 // ── Application-wide Zoom ─────────────────────────────────────────────
 const zoom = require('./zoom.cjs');
 
@@ -244,6 +252,17 @@ app.whenReady().then(async () => {
   updateManager.setWindow(mainWindow);
   if (!isDev) updateManager.startStartupCheck();
   repoSync.start(mainWindow);
+
+  protocol.registerFileProtocol('murshid-repo', (request, callback) => {
+    try {
+      const url = new URL(request.url);
+      const key = url.hostname;
+      const relPath = decodeURIComponent(url.pathname.replace(/^\//, ''));
+      callback({ path: repoSync.resolveLocalPath(key, relPath) });
+    } catch {
+      callback({ error: -6 });
+    }
+  });
 
   // Initialize the template registry just after the window is on its way. This reads
   // and parses every DOCX template synchronously, so it must never run before the UI.

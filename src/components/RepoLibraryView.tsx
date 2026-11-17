@@ -2,8 +2,8 @@
  * Repository library tab (مخاطبات التربية / الملفات / أغلفة السجلات).
  *
  * Files are mirrored from a public GitHub repository by the main process and
- * kept on disk for offline use. The tab refreshes automatically every five
- * seconds and reacts to push events from the sync service.
+ * kept on disk for offline use. Cards show an inline preview (image, PDF, or a
+ * companion preview image for Word covers) and open/save/print actions.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -16,10 +16,9 @@ import {
   FileSpreadsheet,
   FileText,
   FolderOpen,
-  Image,
+  Image as ImageIcon,
   Loader2,
   Printer,
-  RefreshCw,
   Search,
 } from 'lucide-react';
 import { toLatinDigits } from '../lib/format';
@@ -47,14 +46,26 @@ function extensionOf(name: string): string {
   return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
 }
 
+function baseName(name: string): string {
+  return name.replace(/\.[^.]+$/, '').toLowerCase();
+}
+
+function isImage(name: string): boolean {
+  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(extensionOf(name));
+}
+
+function isPdf(name: string): boolean {
+  return extensionOf(name) === 'pdf';
+}
+
 function FileIcon({ name }: { name: string }) {
   const ext = extensionOf(name);
-  if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) return <Image className="h-4 w-4" />;
-  if (ext === 'pdf') return <FileText className="h-4 w-4" />;
-  if (['xlsx', 'xls', 'csv'].includes(ext)) return <FileSpreadsheet className="h-4 w-4" />;
-  if (['docx', 'doc'].includes(ext)) return <FileText className="h-4 w-4" />;
-  if (['zip', 'rar', '7z'].includes(ext)) return <FileArchive className="h-4 w-4" />;
-  return <FileText className="h-4 w-4" />;
+  if (isImage(name)) return <ImageIcon className="h-7 w-7" />;
+  if (ext === 'pdf') return <FileText className="h-7 w-7" />;
+  if (['xlsx', 'xls', 'csv'].includes(ext)) return <FileSpreadsheet className="h-7 w-7" />;
+  if (['docx', 'doc'].includes(ext)) return <FileText className="h-7 w-7" />;
+  if (['zip', 'rar', '7z'].includes(ext)) return <FileArchive className="h-7 w-7" />;
+  return <FileText className="h-7 w-7" />;
 }
 
 function formatSize(bytes: number): string {
@@ -64,18 +75,58 @@ function formatSize(bytes: number): string {
   return `${toLatinDigits((bytes / (1024 * 1024)).toFixed(1))} م.ب`;
 }
 
-function formatTime(value: number | null): string {
-  if (!value) return 'لم تتم المزامنة بعد';
-  return new Date(value).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+function fileUrl(key: string, relPath: string): string {
+  return `murshid-repo://${key}/${relPath.split('/').map(encodeURIComponent).join('/')}`;
 }
 
-export default function RepoLibraryView({ repoKey, title, mode = 'library', coverValues }: RepoLibraryViewProps) {
+/** Inline preview area: image, PDF first page, or a file-type placeholder. */
+function Preview({ file, source, repoKey }: { file: RepoFile; source?: RepoFile; repoKey: RepoKey }) {
+  const [failed, setFailed] = useState(false);
+  const target = source || file;
+
+  if (!failed && isImage(target.name)) {
+    return (
+      <img
+        src={fileUrl(repoKey, target.path)}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="h-full w-full object-cover"
+      />
+    );
+  }
+
+  if (!failed && isPdf(target.name)) {
+    return (
+      <div className="h-full w-full pointer-events-none bg-white">
+        <iframe
+          title={target.name}
+          src={fileUrl(repoKey, target.path)}
+          className="h-full w-full border-0"
+          onError={() => setFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-card-elevated text-muted">
+      <FileIcon name={file.name} />
+      <span className="text-[9px] font-bold uppercase">{extensionOf(file.name) || 'ملف'}</span>
+    </div>
+  );
+}
+
+export default function RepoLibraryView({
+  repoKey,
+  title,
+  mode = 'library',
+  coverValues,
+}: RepoLibraryViewProps) {
   const api = (window as any).electronAPI;
   const [files, setFiles] = useState<RepoFile[]>([]);
-  const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<{ path: string; action: 'open' | 'save' | 'print' } | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -88,34 +139,28 @@ export default function RepoLibraryView({ repoKey, title, mode = 'library', cove
   const applyState = useCallback((state: any) => {
     if (!state) return;
     if (Array.isArray(state.files)) setFiles(state.files);
-    if (state.syncedAt) setSyncedAt(state.syncedAt);
     setError(state.error || '');
   }, []);
 
-  const load = useCallback(async (force = false) => {
+  const load = useCallback(async () => {
     if (!api?.repo) {
       setLoading(false);
       setError('هذه الميزة متاحة فقط في تطبيق مرشد.');
       return;
     }
-    if (force) setRefreshing(true);
     try {
-      const state = force ? await api.repo.sync(repoKey) : await api.repo.list(repoKey);
-      applyState(state);
-      if (state?.ok === false) setError(state.error || 'تعذر تحميل الملفات.');
+      applyState(await api.repo.list(repoKey));
     } catch (err: any) {
       setError(err?.message || 'تعذر تحميل الملفات.');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [api, repoKey, applyState]);
 
   useEffect(() => {
-    load(false);
+    load();
   }, [load]);
 
-  // Push updates from the sync service + a light 5-second refresh as a fallback.
   useEffect(() => {
     if (!api?.repo) return;
     const off = api.repo.onUpdate?.((data: any) => {
@@ -130,11 +175,30 @@ export default function RepoLibraryView({ repoKey, title, mode = 'library', cove
     };
   }, [api, repoKey, applyState]);
 
+  // Preview images live in a "previews/" folder and are not listed as files.
+  const previewMap = useMemo(() => {
+    const map: Record<string, RepoFile> = {};
+    files.forEach((file) => {
+      if (file.path.startsWith('previews/') && isImage(file.name)) {
+        map[baseName(file.name)] = file;
+      }
+    });
+    return map;
+  }, [files]);
+
+  const visibleFiles = useMemo(
+    () => files.filter((file) => !file.path.startsWith('previews/')),
+    [files]
+  );
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return files;
-    return files.filter((file) => file.path.toLowerCase().includes(q) || file.name.toLowerCase().includes(q));
-  }, [files, search]);
+    const query = search.trim().toLowerCase();
+    if (!query) return visibleFiles;
+    return visibleFiles.filter(
+      (file) =>
+        file.path.toLowerCase().includes(query) || file.name.toLowerCase().includes(query)
+    );
+  }, [visibleFiles, search]);
 
   const run = async (file: RepoFile, action: 'open' | 'save' | 'print') => {
     if (!api?.repo) return;
@@ -144,12 +208,21 @@ export default function RepoLibraryView({ repoKey, title, mode = 'library', cove
         const result = await api.repo.open(repoKey, file.path);
         if (!result?.ok) notify('error', result?.error || 'تعذر فتح الملف.');
       } else if (action === 'save') {
-        const result = await api.repo.save(repoKey, file.path, file.name, mode === 'covers' ? coverValues : undefined);
+        const result = await api.repo.save(
+          repoKey,
+          file.path,
+          file.name,
+          mode === 'covers' ? coverValues : undefined
+        );
         if (result?.canceled) return;
         if (!result?.ok) notify('error', result?.error || 'تعذر حفظ الملف.');
         else notify('success', `تم حفظ الملف: ${result.filePath || file.name}`);
       } else {
-        const result = await api.repo.print(repoKey, file.path, mode === 'covers' ? coverValues : undefined);
+        const result = await api.repo.print(
+          repoKey,
+          file.path,
+          mode === 'covers' ? coverValues : undefined
+        );
         if (!result?.ok) notify('error', result?.error || 'تعذرت الطباعة.');
         else if (result.note) notify('success', result.note);
         else notify('success', 'تم إرسال الملف إلى الطابعة.');
@@ -176,28 +249,8 @@ export default function RepoLibraryView({ repoKey, title, mode = 'library', cove
         </div>
       )}
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="kicker">مكتبة عامة · تُحدَّث تلقائياً</p>
-          <h1 className="mt-1.5 text-[24px] font-black leading-tight text-main">{title}</h1>
-          <p className="mt-1 text-[11px] font-semibold text-muted">
-            الملفات محفوظة للاستخدام دون اتصال — تُحدَّث كل 5 ثوانٍ، وتُحذف محلياً إذا حُذفت من المستودع.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-lg border border-border-color bg-card px-2.5 py-1.5 text-[10px] font-bold text-muted">
-            آخر مزامنة: <span className="num text-sec">{formatTime(syncedAt)}</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => load(true)}
-            disabled={refreshing}
-            className="btn-secondary flex items-center gap-1.5 !px-3 !py-2 !text-[11px] disabled:opacity-60"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            مزامنة الآن
-          </button>
-        </div>
+      <header>
+        <h1 className="text-[24px] font-black leading-tight text-main">{title}</h1>
       </header>
 
       {error && (
@@ -227,123 +280,92 @@ export default function RepoLibraryView({ repoKey, title, mode = 'library', cove
           <p className="text-[12px] font-black text-main">
             {search ? 'لا توجد نتائج مطابقة.' : 'لا توجد ملفات في هذا المستودع بعد.'}
           </p>
-          <p className="mt-1 text-[10.5px] text-muted">
-            ستظهر الملفات هنا تلقائياً فور إضافتها إلى المستودع.
-          </p>
-        </div>
-      ) : isCovers ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((file) => (
-            <div
-              key={file.path}
-              className="flex flex-col gap-3 rounded-[14px] border border-border-color bg-card p-4 shadow-xs"
-            >
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-primary-bg text-primary">
-                  <FileIcon name={file.name} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-black text-main" title={file.name}>{file.name}</p>
-                  <p className="mt-0.5 truncate text-[9.5px] text-muted" dir="ltr">{file.path}</p>
-                  <p className="mt-1 text-[9.5px] font-semibold text-muted">
-                    {formatSize(file.size)} · {file.local ? 'محفوظ دون اتصال' : 'قيد التنزيل'}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => run(file, 'print')}
-                  disabled={busy?.path === file.path}
-                  className="btn-primary flex flex-1 items-center justify-center gap-1.5 !px-3 !py-2 !text-[10.5px] disabled:opacity-60"
-                >
-                  {busy?.path === file.path && busy.action === 'print'
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Printer className="h-3.5 w-3.5" />}
-                  طباعة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => run(file, 'save')}
-                  disabled={busy?.path === file.path}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border border-border-color bg-card px-3 py-2 text-[10.5px] font-bold text-sec transition-colors hover:bg-hover disabled:opacity-60"
-                >
-                  {busy?.path === file.path && busy.action === 'save'
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Download className="h-3.5 w-3.5" />}
-                  تنزيل Word
-                </button>
-              </div>
-            </div>
-          ))}
         </div>
       ) : (
-        <section className="overflow-hidden rounded-[14px] border border-border-color bg-card shadow-xs">
-          <table className="w-full text-right text-xs">
-            <thead className="border-b border-divider-color bg-card-elevated text-[10px] font-black text-muted">
-              <tr>
-                <th className="px-4 py-2.5">الملف</th>
-                <th className="px-4 py-2.5">الحجم</th>
-                <th className="px-4 py-2.5">الحالة</th>
-                <th className="px-4 py-2.5">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((file) => (
-                <tr
-                  key={file.path}
-                  className="border-b border-divider-color last:border-0 transition-colors hover:bg-hover"
-                >
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-primary-bg text-primary">
-                        <FileIcon name={file.name} />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-[11.5px] font-bold text-main" title={file.name}>{file.name}</p>
-                        <p className="truncate text-[9px] text-muted" dir="ltr">{file.path}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-[10px] font-semibold text-muted">{formatSize(file.size)}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
-                      file.local ? 'bg-primary-bg text-primary' : 'bg-hover text-muted'
-                    }`}>
-                      {file.local ? 'متوفر دون اتصال' : 'قيد التنزيل'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => run(file, 'open')}
-                        disabled={busy?.path === file.path}
-                        title="فتح الملف"
-                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-hover hover:text-main disabled:opacity-50"
-                      >
-                        {busy?.path === file.path && busy.action === 'open'
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <ExternalLink className="h-3.5 w-3.5" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => run(file, 'save')}
-                        disabled={busy?.path === file.path}
-                        title="حفظ نسخة"
-                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-hover hover:text-primary disabled:opacity-50"
-                      >
-                        {busy?.path === file.path && busy.action === 'save'
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <Download className="h-3.5 w-3.5" />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+        <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${isCovers ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+          {filtered.map((file) => {
+            const companion = previewMap[baseName(file.name)];
+            const isBusy = busy?.path === file.path;
+            return (
+              <div
+                key={file.path}
+                className="flex flex-col overflow-hidden rounded-[14px] border border-border-color bg-card shadow-xs"
+              >
+                <div className={`${isCovers ? 'aspect-[3/4]' : 'h-36'} w-full overflow-hidden border-b border-divider-color bg-card-elevated`}>
+                  <Preview
+                    file={file}
+                    repoKey={repoKey}
+                    source={companion || (isImage(file.name) || isPdf(file.name) ? file : undefined)}
+                  />
+                </div>
+
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-[12px] font-black text-main" title={file.name}>{file.name}</p>
+                    <p className="mt-0.5 truncate text-[9.5px] text-muted" dir="ltr">{file.path}</p>
+                    <p className="mt-1 text-[9.5px] font-semibold text-muted">
+                      {formatSize(file.size)}
+                    </p>
+                  </div>
+
+                  <div className="mt-auto flex items-center gap-2">
+                    {isCovers ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => run(file, 'print')}
+                          disabled={isBusy}
+                          className="btn-primary flex flex-1 items-center justify-center gap-1.5 !px-3 !py-2 !text-[10.5px] disabled:opacity-60"
+                        >
+                          {isBusy && busy.action === 'print'
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Printer className="h-3.5 w-3.5" />}
+                          طباعة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => run(file, 'save')}
+                          disabled={isBusy}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border border-border-color bg-card px-3 py-2 text-[10.5px] font-bold text-sec transition-colors hover:bg-hover disabled:opacity-60"
+                        >
+                          {isBusy && busy.action === 'save'
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Download className="h-3.5 w-3.5" />}
+                          تنزيل Word
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => run(file, 'open')}
+                          disabled={isBusy}
+                          className="btn-secondary flex flex-1 items-center justify-center gap-1.5 !px-3 !py-2 !text-[10.5px] disabled:opacity-60"
+                        >
+                          {isBusy && busy.action === 'open'
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <ExternalLink className="h-3.5 w-3.5" />}
+                          فتح
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => run(file, 'save')}
+                          disabled={isBusy}
+                          className="btn-primary flex flex-1 items-center justify-center gap-1.5 !px-3 !py-2 !text-[10.5px] disabled:opacity-60"
+                        >
+                          {isBusy && busy.action === 'save'
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Download className="h-3.5 w-3.5" />}
+                          حفظ
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

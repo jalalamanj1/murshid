@@ -488,4 +488,8 @@ module.exports = {
   saveAs,
   printFile,
   hasPrinter,
+  resolveLocalPath: (key, relPath) => {
+    if (!REPOS[key]) throw new Error('مستودع غير معروف.');
+    return localPathFor(key, relPath);
+  },
 };

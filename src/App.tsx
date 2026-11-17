@@ -52,7 +52,8 @@ import DashboardView from './components/DashboardViewRedesigned';
 import RecordsListView from './components/RecordsListView';
 import StudentManagementView from './components/StudentManagementView';
 import BackupSyncView from './components/BackupSyncView';
-import DriveFolderView from './components/DriveFolderView';
+import RepoLibraryView from './components/RepoLibraryView';
+import NotificationsView, { type AppNotification } from './components/NotificationsView';
 import CaseStudyFormView from './components/CaseStudyFormView';
 import CaseStudyListView from './components/CaseStudyListView';
 import CounselingSessionFormView from './components/CounselingSessionFormView';
@@ -65,11 +66,11 @@ import HealthRecordListView from './components/HealthRecordListView';
 import ParentLossRecordFormView from './components/ParentLossRecordFormView';
 import ParentLossRecordListView from './components/ParentLossRecordListView';
 import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
-import RecordCoversView from './components/RecordCoversView';
 import ExportSection from './components/ExportSection';
 import SettingsView from './components/SettingsView';
 import UpdatePrompt from './components/UpdatePrompt';
 import type { RecordImportResult } from './lib/recordFileImport';
+import { toLatinDigits } from './lib/format';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
 import {
   getActivationStatus,
@@ -99,6 +100,10 @@ export default function App() {
   const sessionUnlockedRef = useRef(!isAppLockEnabled());
 
   const [activeModule, setActiveModule] = useState<ActiveModule>('DASHBOARD');
+  const [moduleBadges, setModuleBadges] = useState<Partial<Record<ActiveModule, number>>>({});
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const activeModuleRef = useRef<ActiveModule>('DASHBOARD');
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
   const [appVersion, setAppVersion] = useState('1.2.5');
@@ -114,6 +119,64 @@ export default function App() {
   useEffect(() => {
     isRegisteredRef.current = profile.isRegistered;
   }, [profile.isRegistered]);
+
+  useEffect(() => {
+    activeModuleRef.current = activeModule;
+  }, [activeModule]);
+
+  // Repository libraries: track new files, keep per-tab badges and a notice log.
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (!api?.repo?.onUpdate) return;
+
+    const repos: Record<string, { module: ActiveModule; label: string }> = {
+      files: { module: 'DRIVE_FILES', label: 'الملفات' },
+      letters: { module: 'DRIVE_LETTERS', label: 'مخاطبات التربية' },
+      covers: { module: 'TEMPLATES', label: 'أغلفة السجلات' },
+    };
+    const lastError: Record<string, string> = {};
+
+    const pushNotification = (notification: Omit<AppNotification, 'id' | 'at'>) => {
+      setNotifications(previous => [
+        { ...notification, id: `ntf_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, at: Date.now() },
+        ...previous,
+      ].slice(0, 80));
+    };
+
+    const off = api.repo.onUpdate((data: any) => {
+      const meta = data?.key ? repos[data.key] : null;
+      if (!meta) return;
+
+      if (data.error) {
+        if (lastError[data.key] !== data.error) {
+          lastError[data.key] = data.error;
+          pushNotification({ text: `تعذر تحديث ${meta.label}: ${data.error}`, level: 'error' });
+          setUnreadNotifications(count => count + 1);
+        }
+        return;
+      }
+      lastError[data.key] = '';
+
+      if (!data.initial && Array.isArray(data.added) && data.added.length > 0) {
+        const count = data.added.length;
+        pushNotification({
+          text: `تمت إضافة ${toLatinDigits(count)} ملفاً جديداً إلى ${meta.label}.`,
+          level: 'info',
+          quiet: true,
+        });
+        if (activeModuleRef.current !== meta.module) {
+          setModuleBadges(previous => ({
+            ...previous,
+            [meta.module]: (previous[meta.module] || 0) + count,
+          }));
+        }
+      }
+    });
+
+    return () => {
+      if (typeof off === 'function') off();
+    };
+  }, []);
 
   // Automatic local backup: checks once a minute while the app is in use.
   useEffect(() => {
@@ -1054,24 +1117,25 @@ export default function App() {
         );
 
       case 'TEMPLATES':
-        return <RecordCoversView />;
+        return <RepoLibraryView repoKey="covers" title="أغلفة السجلات" mode="covers" />;
 
       case 'BACKUP':
         return <BackupSyncView />;
 
       case 'DRIVE_LETTERS':
-        return (
-          <DriveFolderView
-            folderKey="letters"
-            title="مخاطبات التربية"
-          />
-        );
+        return <RepoLibraryView repoKey="letters" title="مخاطبات التربية" />;
 
       case 'DRIVE_FILES':
+        return <RepoLibraryView repoKey="files" title="الملفات" />;
+
+      case 'NOTIFICATIONS':
         return (
-          <DriveFolderView
-            folderKey="files"
-            title="الملفات"
+          <NotificationsView
+            notifications={notifications}
+            onClear={() => {
+              setNotifications([]);
+              setUnreadNotifications(0);
+            }}
           />
         );
 
@@ -1120,6 +1184,8 @@ export default function App() {
   }
 
   const handleNavigate = (mod: ActiveModule) => {
+    setModuleBadges(previous => (previous[mod] ? { ...previous, [mod]: 0 } : previous));
+    if (mod === 'NOTIFICATIONS') setUnreadNotifications(0);
     // Reset all module-specific state when navigating
     setSelectedRecordType(null);
     setRecordStartInAdd(false);
@@ -1147,6 +1213,7 @@ export default function App() {
       DRIVE_LETTERS: 'مخاطبات التربية',
       DRIVE_FILES: 'الملفات',
       SETTINGS: 'الإعدادات',
+      NOTIFICATIONS: 'التنبيهات',
     };
     try {
       const e = (window as any).electronAPI;
@@ -1356,6 +1423,7 @@ export default function App() {
         activeModule={activeModule} 
         onNavigate={handleNavigate}
         profile={profile}
+        badges={{ ...moduleBadges, NOTIFICATIONS: unreadNotifications }}
       >
         {renderActiveModuleContent()}
       </DesktopWindow>

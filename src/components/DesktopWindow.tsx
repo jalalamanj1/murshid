@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Minus,
   X,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 import { ActiveModule, CounselorProfile } from '../types';
@@ -33,6 +34,7 @@ interface DesktopWindowProps {
   onNavigate: (module: ActiveModule) => void;
   onLogout?: () => void;
   profile?: CounselorProfile | null;
+  badges?: Partial<Record<ActiveModule, number>>;
   children: React.ReactNode;
 }
 
@@ -52,12 +54,14 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'DRIVE_FILES', name: 'الملفات', icon: FolderOpen },
   { id: 'BACKUP', name: 'النسخ الاحتياطي', icon: Database },
   { id: 'SETTINGS', name: 'الإعدادات', icon: Sliders },
+  { id: 'NOTIFICATIONS', name: 'التنبيهات', icon: Bell },
 ];
 
 export default function DesktopWindow({
   activeModule,
   onNavigate,
   profile,
+  badges,
   children,
 }: DesktopWindowProps) {
   const [time, setTime] = useState(new Date());
@@ -130,6 +134,11 @@ export default function DesktopWindow({
                     </span>
                     {isActive && (
                       <span className="absolute inset-y-2 -right-3 w-[2.5px] rounded-full bg-primary" />
+                    )}
+                    {(badges?.[item.id] || 0) > 0 && (
+                      <span className="ms-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black text-white">
+                        {toLatinDigits(Math.min(99, badges?.[item.id] || 0))}
+                      </span>
                     )}
                   </button>
                 </li>

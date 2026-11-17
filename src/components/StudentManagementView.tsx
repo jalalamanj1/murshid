@@ -156,14 +156,13 @@ export default function StudentManagementView({
   };
 
   const allFilteredSelected =
-    pageStudents.length > 0 && pageStudents.every(student => selectedIds.includes(student.id));
+    filteredStudents.length > 0 && filteredStudents.every(student => selectedIds.includes(student.id));
 
   const toggleSelectAll = () => {
     if (allFilteredSelected) {
-      const pageIds = new Set(pageStudents.map(student => student.id));
-      setSelectedIds(prev => prev.filter(id => !pageIds.has(id)));
+      setSelectedIds([]);
     } else {
-      setSelectedIds(prev => Array.from(new Set([...prev, ...pageStudents.map(student => student.id)])));
+      setSelectedIds(filteredStudents.map(student => student.id));
     }
   };
 

@@ -1,7 +1,7 @@
 {
   "name": "murshid",
   "private": true,
-  "version": "1.8.3",
+  "version": "1.9.0",
   "main": "electron/main.cjs",
   "author": "Pandara Tech",
   "description": "مرشد - المرشد التربوي العراقي المتكامل",

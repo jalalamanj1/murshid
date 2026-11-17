@@ -62,6 +62,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: () => ipcRenderer.invoke('update:install'),
   deferUpdate: () => ipcRenderer.invoke('update:defer'),
   getUpdateState: () => ipcRenderer.invoke('update:state'),
+
+  // ── Repository libraries (files / letters / covers) ───────────────
+  repo: {
+    list: (key) => ipcRenderer.invoke('repo:list', key),
+    sync: (key) => ipcRenderer.invoke('repo:sync', key),
+    open: (key, path) => ipcRenderer.invoke('repo:open', key, path),
+    save: (key, path, suggestedName) => ipcRenderer.invoke('repo:save', key, path, suggestedName),
+    print: (key, path) => ipcRenderer.invoke('repo:print', key, path),
+    hasPrinter: () => ipcRenderer.invoke('repo:has-printer'),
+    onUpdate: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('repo:update', handler);
+      return () => ipcRenderer.removeListener('repo:update', handler);
+    },
+  },
   onUpdateStatus: (callback) => {
     ipcRenderer.on('update:status', (_e, data) => callback({ status: data.status, version: data.version }));
     ipcRenderer.on('update:progress', (_e, data) => callback({ status: 'progress', percent: data.percent }));

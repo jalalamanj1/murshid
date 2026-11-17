@@ -13,7 +13,8 @@ export type ActiveModule =
   | 'BACKUP'
   | 'DRIVE_LETTERS'
   | 'DRIVE_FILES'
-  | 'SETTINGS';
+  | 'SETTINGS'
+  | 'NOTIFICATIONS';
 
 export interface CounselorProfile {
   fullName: string;

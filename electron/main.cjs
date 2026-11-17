@@ -165,6 +165,9 @@ ipcMain.handle('activation-state:clear', async () => clearActivationState());
 // ── Update Manager ────────────────────────────────────────────────────
 const updateManager = require('./update-manager.cjs');
 
+// ── Public repository libraries (files / letters / covers) ────────────
+const repoSync = require('./repo-sync.cjs');
+
 // ── Application-wide Zoom ─────────────────────────────────────────────
 const zoom = require('./zoom.cjs');
 
@@ -240,6 +243,7 @@ app.whenReady().then(async () => {
   createWindow();
   updateManager.setWindow(mainWindow);
   if (!isDev) updateManager.startStartupCheck();
+  repoSync.start(mainWindow);
 
   // Initialize the template registry just after the window is on its way. This reads
   // and parses every DOCX template synchronously, so it must never run before the UI.
@@ -1004,6 +1008,58 @@ ipcMain.handle('update:state', async () => {
     return updateManager.getUpdateState();
   } catch (err) {
     return { status: 'none', error: err.message };
+  }
+});
+
+// ── Repository library IPC ────────────────────────────────────────────
+ipcMain.handle('repo:list', async (_event, key) => {
+  try {
+    if (!repoSync.REPOS[key]) return { ok: false, error: 'مستودع غير معروف.' };
+    return { ok: true, ...repoSync.publicState(key) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('repo:sync', async (_event, key) => {
+  try {
+    if (!repoSync.REPOS[key]) return { ok: false, error: 'مستودع غير معروف.' };
+    const state = await repoSync.syncRepo(key, { force: true });
+    return { ok: true, ...state };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('repo:open', async (_event, key, relPath) => {
+  try {
+    return await repoSync.openFile(key, relPath);
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('repo:save', async (_event, key, relPath, suggestedName) => {
+  try {
+    return await repoSync.saveAs(key, relPath, suggestedName);
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('repo:print', async (_event, key, relPath) => {
+  try {
+    return await repoSync.printFile(key, relPath);
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('repo:has-printer', async () => {
+  try {
+    return { ok: true, hasPrinter: await repoSync.hasPrinter() };
+  } catch (err) {
+    return { ok: false, hasPrinter: false, error: err.message };
   }
 });
 

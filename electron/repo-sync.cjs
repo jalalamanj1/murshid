@@ -8,7 +8,7 @@
  * for offline use, and files removed upstream are deleted locally.
  */
 
-const { app, shell, BrowserWindow, dialog } = require('electron');
+const { app, shell, BrowserWindow, dialog, net } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -36,6 +36,21 @@ let _timer = null;
 let _syncing = false;
 let _backoffUntil = 0;
 const _emptyPollGate = {};
+
+/** Transient connectivity failures must never look like repository errors. */
+function isOfflineError(message) {
+  return /ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENETUNREACH|EHOSTUNREACH|socket hang up|network error/i.test(
+    String(message || '')
+  );
+}
+
+function offlineNow() {
+  try {
+    return typeof net?.isOnline === 'function' && !net.isOnline();
+  } catch {
+    return false;
+  }
+}
 
 function paths() {
   if (_statePath) return { statePath: _statePath, cacheRoot: _cacheRoot };
@@ -203,7 +218,8 @@ function publicState(key) {
     files,
     syncedAt: entry.syncedAt || null,
     commit: entry.commit || null,
-    error: entry.error || null,
+    // A cached connectivity failure should never be shown as a repository error.
+    error: entry.error && !isOfflineError(entry.error) ? entry.error : null,
   };
 }
 
@@ -316,15 +332,39 @@ async function syncRepo(key, { force = false } = {}) {
     broadcast(payload);
     return payload;
   } catch (err) {
+    const message = err?.message || String(err);
+
+    // No internet / DNS failure: keep the cached library, retry quietly later.
+    if (offlineNow() || isOfflineError(message)) {
+      _backoffUntil = Date.now() + 30000;
+      _state[key] = {
+        ...(entry || {}),
+        error: null,
+        offline: true,
+        syncedAt: entry?.syncedAt || null,
+      };
+      saveState();
+      broadcast({
+        ...publicState(key),
+        added: [],
+        changed: [],
+        removed: [],
+        offline: true,
+        error: null,
+      });
+      if (errorBefore) console.warn(`[repos] ${key}: connection lost, will retry automatically.`);
+      return publicState(key);
+    }
+
     _state[key] = {
       ...(entry || {}),
-      error: err.message,
+      error: message,
       syncedAt: Date.now(),
     };
     saveState();
-    broadcast({ ...publicState(key), added: [], changed: [], removed: [], error: err.message });
-    if (errorBefore !== err.message) {
-      console.error(`[repos] ${key} sync failed:`, err.message);
+    broadcast({ ...publicState(key), added: [], changed: [], removed: [], error: message });
+    if (errorBefore !== message) {
+      console.error(`[repos] ${key} sync failed:`, message);
     }
     return publicState(key);
   }
@@ -333,6 +373,10 @@ async function syncRepo(key, { force = false } = {}) {
 async function syncAll(options = {}) {
   if (_syncing) return;
   if (Date.now() < _backoffUntil) return;
+  if (offlineNow()) {
+    _backoffUntil = Date.now() + 15000;
+    return;
+  }
   _syncing = true;
   try {
     for (const key of Object.keys(REPOS)) {

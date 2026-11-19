@@ -135,6 +135,10 @@ export default function App() {
       covers: { module: 'TEMPLATES', label: 'أغلفة السجلات' },
     };
     const lastError: Record<string, string> = {};
+    const isConnectivityError = (message: string) =>
+      /ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENETUNREACH|EHOSTUNREACH|socket hang up|network error/i.test(
+        message || ''
+      );
 
     const pushNotification = (notification: Omit<AppNotification, 'id' | 'at'>) => {
       setNotifications(previous => [
@@ -147,8 +151,10 @@ export default function App() {
       const meta = data?.key ? repos[data.key] : null;
       if (!meta) return;
 
+      if (data.offline) return;
+
       if (data.error) {
-        if (lastError[data.key] !== data.error) {
+        if (!isConnectivityError(data.error) && lastError[data.key] !== data.error) {
           lastError[data.key] = data.error;
           pushNotification({ text: `تعذر تحديث ${meta.label}: ${data.error}`, level: 'error' });
           setUnreadNotifications(count => count + 1);

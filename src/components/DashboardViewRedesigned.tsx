@@ -170,7 +170,7 @@ export default function DashboardViewRedesigned({
         <div className="min-w-0">
           <p className="kicker">لوحة التحكم · {todayLabel}</p>
           <h1 className="mt-1.5 text-[26px] font-black leading-tight text-main">
-            أهلاً، {profile.fullName || 'المرشد التربوي'}
+            {profile.counselorGender === 'FEMALE' ? 'أهلاً بكِ، أستاذة' : 'أهلاً بك، أستاذ'}
           </h1>
           <p className="mt-1.5 text-[12px] font-semibold text-sec">
             {profile.schoolName || 'لم يتم تسجيل اسم المدرسة بعد'}

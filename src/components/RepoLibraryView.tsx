@@ -301,9 +301,13 @@ export default function RepoLibraryView({
 
                 <div className="flex flex-1 flex-col gap-3 p-4">
                   <div className="min-w-0">
-                    <p className="truncate text-[12px] font-black text-main" title={file.name}>{file.name}</p>
-                    <p className="mt-0.5 truncate text-[9.5px] text-muted" dir="ltr">{file.path}</p>
-                    <p className="mt-1 text-[9.5px] font-semibold text-muted">
+                    {!isCovers && (
+                      <>
+                        <p className="truncate text-[12px] font-black text-main" title={file.name}>{file.name}</p>
+                        <p className="mt-0.5 truncate text-[9.5px] text-muted" dir="ltr">{file.path}</p>
+                      </>
+                    )}
+                    <p className={`text-[9.5px] font-semibold text-muted ${isCovers ? 'text-center' : 'mt-1'}`}>
                       {formatSize(file.size)}
                     </p>
                   </div>

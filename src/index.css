@@ -184,6 +184,23 @@
   transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 
+body, body *:not(input):not(textarea):not(select):not([contenteditable]) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+button, [role="button"], .btn-primary, .btn-secondary, .btn-danger, .nav-item {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Compact filter dropdowns used beside wide search fields. */
+.filter-select {
+  width: 150px !important;
+  min-width: 150px !important;
+  flex: 0 0 150px !important;
+}
+
 /* Visible keyboard focus everywhere; pointer clicks stay clean. */
 :where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
   outline: 2px solid var(--primary);

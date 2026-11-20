@@ -1183,6 +1183,7 @@ export default function App() {
     return (
       <ActivationGateView
         activationStatus={activationStatus}
+        onRetry={() => void checkActivationStatus()}
         onSubmit={handleActivationSubmit}
       />
     );

@@ -9,17 +9,37 @@ import {
   AlertCircle,
   CheckCircle2,
   BadgeCheck,
+  MessageCircle,
+  RefreshCw,
+  ShieldAlert,
 } from 'lucide-react';
 import type { ActivationStatusResult } from '../lib/activationManager';
 
 interface ActivationGateViewProps {
   activationStatus: ActivationStatusResult | null;
+  onRetry?: () => void;
   onSubmit: (data: {
     fullName: string;
     phone: string;
     location: string;
     notes?: string;
   }) => Promise<void>;
+}
+
+const SUBSCRIPTION_WHATSAPP_URL =
+  'https://wa.me/9647700758915?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%2C%20%D8%A5%D9%86%D8%AA%D9%87%D9%89%20%D8%A5%D8%B4%D8%AA%D8%B1%D8%A7%D9%83%D9%8A%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%2C%20%D8%A7%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%AA%D8%AC%D8%AF%D9%8A%D8%AF...';
+
+function openWhatsApp(): void {
+  try {
+    const bridge = (window as any).electronAPI;
+    if (typeof bridge?.openExternal === 'function') {
+      void bridge.openExternal(SUBSCRIPTION_WHATSAPP_URL);
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  window.open(SUBSCRIPTION_WHATSAPP_URL, '_blank', 'noopener,noreferrer');
 }
 
 function isValidPhone(value: string): boolean {
@@ -50,7 +70,7 @@ function statusMessage(status: ActivationStatusResult | null): string | null {
   }
 }
 
-export default function ActivationGateView({ activationStatus, onSubmit }: ActivationGateViewProps) {
+export default function ActivationGateView({ activationStatus, onRetry, onSubmit }: ActivationGateViewProps) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
@@ -67,6 +87,78 @@ export default function ActivationGateView({ activationStatus, onSubmit }: Activ
   }, [activationStatus?.status]);
 
   const message = statusMessage(activationStatus);
+  const subscriptionEnded =
+    activationStatus?.status === 'expired' || activationStatus?.status === 'revoked';
+
+  if (subscriptionEnded) {
+    const expiryLabel = activationStatus?.expiresAt
+      ? new Date(activationStatus.expiresAt).toLocaleDateString('ar-EG-u-nu-latn', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : null;
+
+    return (
+      <div className="fixed inset-0 z-40 overflow-y-auto bg-office-bg p-6" dir="rtl">
+        <div className="flex min-h-full items-center justify-center">
+          <div className="w-full max-w-lg">
+            <div className="card overflow-hidden !p-0">
+              <div className="border-b border-border-color bg-card-elevated px-7 py-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-bg text-danger">
+                    <ShieldAlert className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-black text-main">
+                      {activationStatus?.status === 'revoked' ? 'تم إيقاف الترخيص' : 'انتهى الاشتراك'}
+                    </h1>
+                    <p className="mt-0.5 text-xs font-medium text-muted">مُرْشِد التربوي العراقي المتكامل</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-7">
+                <p className="text-sm font-semibold leading-relaxed text-secondary">
+                  {activationStatus?.status === 'revoked'
+                    ? 'تم إيقاف ترخيص مُرْشِد. لتفعيله مرة أخرى يرجى التواصل معنا عبر واتساب.'
+                    : 'انتهى اشتراكك في مُرْشِد. لتفعيله مرة أخرى يرجى التواصل معنا عبر واتساب.'}
+                </p>
+
+                {expiryLabel && (
+                  <p className="text-xs font-bold text-muted">تاريخ انتهاء الاشتراك: {expiryLabel}</p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={openWhatsApp}
+                  className="btn-primary flex w-full items-center justify-center gap-2"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  تجديد الاشتراك عبر واتساب
+                </button>
+
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-border-color bg-card px-4 py-3 text-sm font-bold text-main transition-colors hover:bg-card-elevated"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    التحقق من حالة الاشتراك
+                  </button>
+                )}
+
+                <p className="text-center text-[11px] font-medium leading-relaxed text-muted">
+                  بعد تجديد الاشتراك من قبل الإدارة، سيعمل التطبيق تلقائياً دون الحاجة إلى إرسال طلب جديد.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

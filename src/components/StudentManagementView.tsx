@@ -468,18 +468,18 @@ export default function StudentManagementView({
 
       <div className="card bg-white dark:bg-[#1e293b] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-[280px]">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input type="text" placeholder="بحث بالاسم، رقم البطاقة، الهاتف أو الصف..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
               className="w-full bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg pr-10 pl-3 py-2 text-xs outline-none focus:ring-1 focus:ring-office-blue" />
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
-            className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs outline-none">
+            className="filter-select bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs outline-none">
             <option value="">جميع الصفوف</option>
             {GetGradesFromProfile(profile).map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
-            className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs outline-none">
+            className="filter-select bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs outline-none">
             <option value="">جميع الشعب</option>
             {sectionOptions.map(section => <option key={section} value={section}>شعبة {section}</option>)}
           </select>

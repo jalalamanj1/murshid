@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, safeStorage, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, safeStorage, protocol, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -176,6 +176,36 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+// ── Export folder: Desktop\تطبيق مرشد\<active tab> ──────────────────────
+let _exportTab = 'مرشد';
+
+function safeFolderName(name) {
+  return String(name || 'مرشد').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'مرشد';
+}
+
+function exportFolder(tabName) {
+  const root = path.join(app.getPath('desktop'), 'تطبيق مرشد');
+  const folder = path.join(root, safeFolderName(tabName || _exportTab));
+  fs.mkdirSync(folder, { recursive: true });
+  return folder;
+}
+
+function uniqueFilePath(folder, fileName) {
+  const parsed = path.parse(fileName || 'ملف');
+  let target = path.join(folder, `${parsed.name}${parsed.ext || ''}`);
+  let index = 1;
+  while (fs.existsSync(target)) {
+    target = path.join(folder, `${parsed.name} (${index})${parsed.ext || ''}`);
+    index += 1;
+  }
+  return target;
+}
+
+ipcMain.handle('export:set-tab', async (_event, tabName) => {
+  _exportTab = safeFolderName(tabName);
+  return { ok: true, folder: exportFolder(_exportTab) };
+});
+
 // ── Application-wide Zoom ─────────────────────────────────────────────
 const zoom = require('./zoom.cjs');
 
@@ -252,6 +282,35 @@ app.whenReady().then(async () => {
   updateManager.setWindow(mainWindow);
   if (!isDev) updateManager.startStartupCheck();
   repoSync.start(mainWindow);
+
+  // Create the export tree up-front: Desktop\تطبيق مرشد\<tab> for every tab.
+  for (const tab of [
+    'لوحة التحكم',
+    'إدارة الطلبة',
+    'السجلات الإرشادية',
+    'أغلفة السجلات',
+    'مخاطبات التربية',
+    'الملفات',
+    'النسخ الاحتياطي',
+    'الإعدادات',
+    'التنبيهات',
+  ]) {
+    try {
+      exportFolder(tab);
+    } catch {}
+  }
+
+  // Every export that the renderer downloads (Excel/PDF/Word) is written into
+  // Desktop\تطبيق مرشد\<tab> instead of the browser's Downloads folder.
+  session.defaultSession.on('will-download', (_event, item) => {
+    try {
+      const folder = exportFolder();
+      const target = uniqueFilePath(folder, item.getFilename() || 'ملف');
+      item.setSavePath(target);
+    } catch (err) {
+      console.error('[export] could not place download:', err.message);
+    }
+  });
 
   protocol.registerFileProtocol('murshid-repo', (request, callback) => {
     try {
@@ -332,12 +391,7 @@ app.whenReady().then(async () => {
       const fillResult = await coverService.fillCover(modelId, values);
       if (!fillResult.ok) return { ok: false, error: fillResult.error };
 
-      const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: `نموذج.docx`,
-        filters: [{ name: 'Word Document', extensions: ['docx'] }],
-      });
-      if (canceled || !filePath) return { ok: false, canceled: true };
-
+      const filePath = uniqueFilePath(exportFolder(), 'نموذج.docx');
       fs.writeFileSync(filePath, fillResult.buffer);
       return { ok: true, docxPath: filePath };
     } catch (err) {
@@ -609,14 +663,11 @@ const { exportService } = require('./ExportService.cjs');
     }
   });
 
-  // Save an arbitrary file (base64 buffer) chosen by the user via a save dialog.
+  // Save an arbitrary file (base64 buffer) into the active tab's export folder.
   ipcMain.handle('export:save-file', async (_event, fileName, base64) => {
     try {
-      const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: fileName,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      });
-      if (canceled || !filePath) return { ok: false, canceled: true };
+      const folder = exportFolder();
+      const filePath = uniqueFilePath(folder, fileName || 'ملف');
       fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
       return { ok: true, filePath };
     } catch (err) {
@@ -1060,7 +1111,7 @@ ipcMain.handle('repo:open', async (_event, key, relPath) => {
 
 ipcMain.handle('repo:save', async (_event, key, relPath, suggestedName, values) => {
   try {
-    return await repoSync.saveAs(key, relPath, suggestedName, values);
+    return await repoSync.saveAs(key, relPath, suggestedName, values, exportFolder());
   } catch (err) {
     return { ok: false, error: err.message };
   }

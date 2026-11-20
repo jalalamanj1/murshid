@@ -130,6 +130,7 @@ export default function RepoLibraryView({
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<{ path: string; action: 'open' | 'save' | 'print' } | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [printerIssue, setPrinterIssue] = useState<RepoFile | null>(null);
 
   const notify = useCallback((type: 'success' | 'error', text: string) => {
     setToast({ type, text });
@@ -223,8 +224,10 @@ export default function RepoLibraryView({
           file.path,
           mode === 'covers' ? coverValues : undefined
         );
-        if (!result?.ok) notify('error', result?.error || 'تعذرت الطباعة.');
-        else if (result.note) notify('success', result.note);
+        if (!result?.ok) {
+          if (/طابعة/i.test(result?.error || '')) setPrinterIssue(file);
+          else notify('error', result?.error || 'تعذرت الطباعة.');
+        } else if (result.note) notify('success', result.note);
         else notify('success', 'تم إرسال الملف إلى الطابعة.');
       }
     } catch (err: any) {
@@ -269,6 +272,40 @@ export default function RepoLibraryView({
           className="form-input !pr-9"
         />
       </div>
+
+      {printerIssue && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[16px] border border-border-color bg-card shadow-2xl">
+            <div className="border-b border-divider-color px-5 py-4">
+              <h3 className="text-sm font-black text-main">لا توجد طابعة متصلة</h3>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-sec">
+                لم يكتشف التطبيق أي طابعة متصلة عبر USB أو Wi-Fi. تحقق من توصيل الطابعة
+                ثم اضغط «إعادة الفحص» للمحاولة مرة أخرى.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-divider-color px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setPrinterIssue(null)}
+                className="btn-secondary !px-4 !py-2 !text-[11px]"
+              >
+                إغلاق
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const file = printerIssue;
+                  setPrinterIssue(null);
+                  if (file) void run(file, 'print');
+                }}
+                className="btn-primary !px-4 !py-2 !text-[11px]"
+              >
+                إعادة الفحص
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

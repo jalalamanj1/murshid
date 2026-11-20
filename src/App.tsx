@@ -92,6 +92,18 @@ import {
   Award,
 } from 'lucide-react';
 
+const EXPORT_FOLDERS: Record<ActiveModule, string> = {
+  DASHBOARD: 'لوحة التحكم',
+  STUDENTS: 'إدارة الطلبة',
+  RECORDS: 'السجلات الإرشادية',
+  TEMPLATES: 'أغلفة السجلات',
+  DRIVE_LETTERS: 'مخاطبات التربية',
+  DRIVE_FILES: 'الملفات',
+  BACKUP: 'النسخ الاحتياطي',
+  SETTINGS: 'الإعدادات',
+  NOTIFICATIONS: 'التنبيهات',
+};
+
 export default function App() {
   const [flowStage, setFlowStage] = useState<AppFlowStage>('SPLASH');
   const [activationStatus, setActivationStatus] = useState<ActivationStatusResult | null>(null);
@@ -122,7 +134,34 @@ export default function App() {
 
   useEffect(() => {
     activeModuleRef.current = activeModule;
+    try {
+      (window as any).electronAPI?.setExportTab?.(EXPORT_FOLDERS[activeModule] || 'مرشد');
+    } catch {}
   }, [activeModule]);
+
+  // Printing is only allowed when Windows reports at least one installed
+  // printer (USB, Wi-Fi or otherwise). Otherwise nothing is sent to print.
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (!api?.repo?.hasPrinter) return;
+    const originalPrint = window.print.bind(window);
+    const hookedPrint = async () => {
+      try {
+        const result = await api.repo.hasPrinter();
+        if (result && result.hasPrinter === false) {
+          window.alert(
+            'لا توجد طابعة متصلة. تحقق من توصيل الطابعة عبر USB أو Wi-Fi ثم أعد المحاولة.'
+          );
+          return;
+        }
+      } catch {}
+      originalPrint();
+    };
+    (window as any).print = hookedPrint;
+    return () => {
+      (window as any).print = originalPrint;
+    };
+  }, []);
 
   // Repository libraries: track new files, keep per-tab badges and a notice log.
   useEffect(() => {
@@ -490,7 +529,7 @@ export default function App() {
   const coverValues: Record<string, string> = {
     school_name: profile.schoolName || '',
     academic_year: profile.academicYear ? academicYear(profile.academicYear) : '',
-    title: profile.counselorGender === 'FEMALE' ? 'مرشدة تربوية' : 'مرشد تربوي',
+    title: profile.counselorGender === 'FEMALE' ? 'المرشدة التربوية' : 'المرشد التربوي',
     counselor_name: profile.fullName || '',
   };
 

@@ -427,9 +427,32 @@ function filledCopy(key, relPath, values) {
   return target;
 }
 
-async function saveAs(key, relPath, suggestedName, values) {
+function uniqueTarget(folder, fileName) {
+  const parsed = path.parse(fileName || 'ملف');
+  let target = path.join(folder, `${parsed.name}${parsed.ext || ''}`);
+  let index = 1;
+  while (fs.existsSync(target)) {
+    target = path.join(folder, `${parsed.name} (${index})${parsed.ext || ''}`);
+    index += 1;
+  }
+  return target;
+}
+
+async function saveAs(key, relPath, suggestedName, values, targetFolder) {
   const source = filledCopy(key, relPath, values);
   if (!fs.existsSync(source)) return { ok: false, error: 'الملف غير متوفر محلياً بعد.' };
+
+  if (targetFolder) {
+    try {
+      fs.mkdirSync(targetFolder, { recursive: true });
+      const filePath = uniqueTarget(targetFolder, suggestedName || path.basename(source));
+      fs.copyFileSync(source, filePath);
+      return { ok: true, filePath };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }
+
   const result = await dialog.showSaveDialog(_mainWindow, {
     defaultPath: suggestedName || path.basename(source),
   });

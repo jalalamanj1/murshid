@@ -63,6 +63,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deferUpdate: () => ipcRenderer.invoke('update:defer'),
   getUpdateState: () => ipcRenderer.invoke('update:state'),
 
+  // ── Export folder context ──────────────────────────────────────────
+  setExportTab: (tabName) => ipcRenderer.invoke('export:set-tab', tabName),
+
   // ── Repository libraries (files / letters / covers) ───────────────
   repo: {
     list: (key) => ipcRenderer.invoke('repo:list', key),

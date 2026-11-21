@@ -198,6 +198,8 @@ function downloadFile(repo, sha, relPath) {
   });
 }
 
+const ALLOWED_FILE = /\.(png|jpe?g|webp|gif|bmp|pdf|docx?|xlsx?|csv)$/i;
+
 function readLibraryMeta(key) {
   try {
     const raw = fs.readFileSync(localPathFor(key, 'library.json'), 'utf8');
@@ -212,7 +214,7 @@ function publicState(key) {
   const entry = loadState()[key] || {};
   const meta = readLibraryMeta(key);
   const files = Object.values(entry.files || {})
-    .filter((file) => file.path !== 'library.json')
+    .filter((file) => file.path !== 'library.json' && ALLOWED_FILE.test(file.path))
     .map((file) => {
       const absolute = localPathFor(key, file.path);
       const info = meta[file.path] || {};

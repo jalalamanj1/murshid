@@ -243,7 +243,6 @@ export default function RepoLibraryView({
   };
 
   const isCovers = mode === 'covers';
-  const isLetters = repoKey === 'letters';
 
   const shareFile = (file: RepoFile, channel: 'whatsapp' | 'telegram') => {
     const apiBridge = (window as any).electronAPI;
@@ -429,7 +428,7 @@ export default function RepoLibraryView({
                             : <Download className="h-3.5 w-3.5" />}
                           تنزيل
                         </button>
-                        {isLetters && (
+                        {!isCovers && (
                           <>
                             <button
                               type="button"

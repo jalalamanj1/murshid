@@ -198,17 +198,32 @@ function downloadFile(repo, sha, relPath) {
   });
 }
 
+function readLibraryMeta(key) {
+  try {
+    const raw = fs.readFileSync(localPathFor(key, 'library.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed.files === 'object' ? parsed.files : {};
+  } catch {
+    return {};
+  }
+}
+
 function publicState(key) {
   const entry = loadState()[key] || {};
+  const meta = readLibraryMeta(key);
   const files = Object.values(entry.files || {})
+    .filter((file) => file.path !== 'library.json')
     .map((file) => {
       const absolute = localPathFor(key, file.path);
+      const info = meta[file.path] || {};
       return {
         path: file.path,
         name: file.name || path.basename(file.path),
         size: file.size || 0,
         sha: file.sha,
         local: fs.existsSync(absolute),
+        title: typeof info.title === 'string' ? info.title : '',
+        description: typeof info.description === 'string' ? info.description : '',
       };
     })
     .sort((a, b) => a.path.localeCompare(b.path, 'ar'));

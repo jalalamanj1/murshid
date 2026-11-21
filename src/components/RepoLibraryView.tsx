@@ -18,8 +18,10 @@ import {
   FolderOpen,
   Image as ImageIcon,
   Loader2,
+  MessageCircle,
   Printer,
   Search,
+  Send,
 } from 'lucide-react';
 import { toLatinDigits } from '../lib/format';
 
@@ -31,6 +33,9 @@ interface RepoFile {
   size: number;
   sha: string;
   local: boolean;
+  /** Metadata from library.json (letters repository). */
+  title?: string;
+  description?: string;
 }
 
 interface RepoLibraryViewProps {
@@ -238,6 +243,22 @@ export default function RepoLibraryView({
   };
 
   const isCovers = mode === 'covers';
+  const isLetters = repoKey === 'letters';
+
+  const shareFile = (file: RepoFile, channel: 'whatsapp' | 'telegram') => {
+    const apiBridge = (window as any).electronAPI;
+    const rawUrl = `https://raw.githubusercontent.com/jalalamanj1/${repoKey === 'letters' ? 'murshidletters' : 'murshidfiles'}/main/${file.path
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/')}`;
+    const title = file.title || file.name;
+    const text = [title, file.description].filter(Boolean).join('\n');
+    const target =
+      channel === 'whatsapp'
+        ? `https://wa.me/?text=${encodeURIComponent(`${text}\n${rawUrl}`)}`
+        : `https://t.me/share/url?url=${encodeURIComponent(rawUrl)}&text=${encodeURIComponent(text)}`;
+    apiBridge?.openExternal?.(target);
+  };
 
   return (
     <div className="flex flex-col gap-5" dir="rtl">
@@ -340,8 +361,17 @@ export default function RepoLibraryView({
                   <div className="min-w-0">
                     {!isCovers && (
                       <>
-                        <p className="truncate text-[12px] font-black text-main" title={file.name}>{file.name}</p>
-                        <p className="mt-0.5 truncate text-[9.5px] text-muted" dir="ltr">{file.path}</p>
+                        <p className="truncate text-[12px] font-black text-main" title={file.title || file.name}>
+                          {file.title || file.name}
+                        </p>
+                        {file.title && file.title !== file.name && (
+                          <p className="mt-0.5 truncate text-[9px] text-muted" dir="ltr">{file.name}</p>
+                        )}
+                        {file.description && (
+                          <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-sec">
+                            {file.description}
+                          </p>
+                        )}
                       </>
                     )}
                     <p className={`text-[9.5px] font-semibold text-muted ${isCovers ? 'text-center' : 'mt-1'}`}>
@@ -381,7 +411,7 @@ export default function RepoLibraryView({
                           type="button"
                           onClick={() => run(file, 'open')}
                           disabled={isBusy}
-                          className="btn-secondary flex flex-1 items-center justify-center gap-1.5 !px-3 !py-2 !text-[10.5px] disabled:opacity-60"
+                          className="btn-secondary flex flex-1 items-center justify-center gap-1.5 !px-2 !py-2 !text-[10.5px] disabled:opacity-60"
                         >
                           {isBusy && busy.action === 'open'
                             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -392,13 +422,33 @@ export default function RepoLibraryView({
                           type="button"
                           onClick={() => run(file, 'save')}
                           disabled={isBusy}
-                          className="btn-primary flex flex-1 items-center justify-center gap-1.5 !px-3 !py-2 !text-[10.5px] disabled:opacity-60"
+                          className="btn-primary flex flex-1 items-center justify-center gap-1.5 !px-2 !py-2 !text-[10.5px] disabled:opacity-60"
                         >
                           {isBusy && busy.action === 'save'
                             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             : <Download className="h-3.5 w-3.5" />}
-                          حفظ
+                          تنزيل
                         </button>
+                        {isLetters && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => shareFile(file, 'whatsapp')}
+                              title="مشاركة عبر واتساب"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-border-color bg-card text-[#25D366] transition-colors hover:bg-hover"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => shareFile(file, 'telegram')}
+                              title="مشاركة عبر تيليجرام"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-border-color bg-card text-[#229ED9] transition-colors hover:bg-hover"
+                            >
+                              <Send className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>

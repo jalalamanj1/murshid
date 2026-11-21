@@ -63,6 +63,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deferUpdate: () => ipcRenderer.invoke('update:defer'),
   getUpdateState: () => ipcRenderer.invoke('update:state'),
 
+  getTrialState: () => ipcRenderer.invoke('trial:state'),
+
+  // Share a cached library file as an actual file attachment.
+  shareFile: (key, path, channel, title) => ipcRenderer.invoke('share:file', key, path, channel, title),
+
   // ── Export folder context ──────────────────────────────────────────
   setExportTab: (tabName) => ipcRenderer.invoke('export:set-tab', tabName),
 

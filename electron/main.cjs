@@ -176,7 +176,50 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-// ── Export folder: Desktop\تطبيق مرشد\<active tab> ──────────────────────
+// ── Trial mode (separate installer, no activation, 7 days) ────────────
+const IS_TRIAL =
+  fs.existsSync(path.join(__dirname, 'trial.flag')) ||
+  process.env.MURSHID_TRIAL === '1';
+
+if (IS_TRIAL) {
+  try {
+    app.setPath('userData', path.join(app.getPath('appData'), 'murshid-trial'));
+  } catch {}
+}
+
+const TRIAL_DAYS = 7;
+const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
+
+function getTrialState() {
+  if (!IS_TRIAL) return { trial: false };
+  const file = path.join(app.getPath('userData'), 'trial.json');
+  let data = null;
+  try {
+    data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    data = null;
+  }
+  if (!data || !Number.isFinite(Number(data.installedAt))) {
+    data = { installedAt: Date.now() };
+    try {
+      fs.mkdirSync(app.getPath('userData'), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(data));
+    } catch {}
+  }
+
+  const installedAt = Number(data.installedAt);
+  const now = Date.now();
+  // A clock rollback must not extend the trial.
+  const expired = now < installedAt - 60 * 60 * 1000 || now >= installedAt + TRIAL_DAYS * TRIAL_DAY_MS;
+  const remaining = Math.max(0, installedAt + TRIAL_DAYS * TRIAL_DAY_MS - now);
+  return {
+    trial: true,
+    installedAt,
+    expired,
+    daysLeft: Math.ceil(remaining / TRIAL_DAY_MS),
+    remainingMs: remaining,
+  };
+}
 let _exportTab = 'مرشد';
 
 function safeFolderName(name) {
@@ -280,7 +323,7 @@ app.whenReady().then(async () => {
   // block the window from appearing: startup must stay instant.
   createWindow();
   updateManager.setWindow(mainWindow);
-  if (!isDev) updateManager.startStartupCheck();
+  if (!isDev && !IS_TRIAL) updateManager.startStartupCheck();
   repoSync.start(mainWindow);
 
   // Create the export tree up-front: Desktop\تطبيق مرشد\<tab> for every tab.
@@ -1049,6 +1092,7 @@ const { exportService } = require('./ExportService.cjs');
 // ── Update IPC ────────────────────────────────────────────────────
 ipcMain.handle('update:check', async () => {
   try {
+    if (IS_TRIAL) return { ok: false, error: 'التحديثات غير متاحة في النسخة التجريبية.' };
     updateManager.checkForUpdates();
     return { ok: true };
   } catch (err) {
@@ -1058,12 +1102,15 @@ ipcMain.handle('update:check', async () => {
 
 ipcMain.handle('update:install', async () => {
   try {
+    if (IS_TRIAL) return { ok: false, error: 'التحديثات غير متاحة في النسخة التجريبية.' };
     updateManager.installUpdate();
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };
   }
 });
+
+ipcMain.handle('trial:state', async () => getTrialState());
 
 ipcMain.handle('update:defer', async () => {
   try {
@@ -1130,6 +1177,47 @@ ipcMain.handle('repo:has-printer', async () => {
     return { ok: true, hasPrinter: await repoSync.hasPrinter() };
   } catch (err) {
     return { ok: false, hasPrinter: false, error: err.message };
+  }
+});
+
+// Share the actual cached file: put it on the Windows clipboard as a file and
+// open WhatsApp/Telegram, where the user pastes it into the chosen chat.
+ipcMain.handle('share:file', async (_event, key, relPath, channel, title) => {
+  try {
+    const source = repoSync.resolveLocalPath(key, relPath);
+    if (!fs.existsSync(source)) return { ok: false, error: 'الملف غير متوفر محلياً بعد.' };
+
+    const escaped = source.replace(/'/g, "''");
+    execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-STA',
+        '-Command',
+        `Add-Type -AssemblyName System.Windows.Forms; ` +
+          `$c = New-Object System.Collections.Specialized.StringCollection; ` +
+          `$c.Add('${escaped}'); ` +
+          `[System.Windows.Forms.Clipboard]::SetFileDropList($c)`,
+      ],
+      { windowsHide: true, timeout: 15000 }
+    );
+
+    const caption = encodeURIComponent(String(title || ''));
+    const deepLink = channel === 'telegram' ? 'tg://' : `whatsapp://send?text=${caption}`;
+    const webLink = channel === 'telegram' ? 'https://t.me/' : `https://wa.me/?text=${caption}`;
+
+    try {
+      await shell.openExternal(deepLink);
+    } catch {
+      await shell.openExternal(webLink);
+    }
+
+    return {
+      ok: true,
+      note: 'تم نسخ الملف. اختر المحادثة في التطبيق ثم اضغط Ctrl+V لإرسال الملف نفسه.',
+    };
+  } catch (err) {
+    return { ok: false, error: err.message };
   }
 });
 

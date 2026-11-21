@@ -244,19 +244,23 @@ export default function RepoLibraryView({
 
   const isCovers = mode === 'covers';
 
-  const shareFile = (file: RepoFile, channel: 'whatsapp' | 'telegram') => {
+  const shareFile = async (file: RepoFile, channel: 'whatsapp' | 'telegram') => {
     const apiBridge = (window as any).electronAPI;
-    const rawUrl = `https://raw.githubusercontent.com/jalalamanj1/${repoKey === 'letters' ? 'murshidletters' : 'murshidfiles'}/main/${file.path
-      .split('/')
-      .map(encodeURIComponent)
-      .join('/')}`;
-    const title = file.title || file.name;
-    const text = [title, file.description].filter(Boolean).join('\n');
-    const target =
-      channel === 'whatsapp'
-        ? `https://wa.me/?text=${encodeURIComponent(`${text}\n${rawUrl}`)}`
-        : `https://t.me/share/url?url=${encodeURIComponent(rawUrl)}&text=${encodeURIComponent(text)}`;
-    apiBridge?.openExternal?.(target);
+    try {
+      const result = await apiBridge?.shareFile?.(
+        repoKey,
+        file.path,
+        channel,
+        file.title || file.name
+      );
+      if (!result?.ok) {
+        notify('error', result?.error || 'تعذر تجهيز الملف للمشاركة.');
+        return;
+      }
+      notify('success', result.note || 'تم تجهيز الملف للمشاركة.');
+    } catch (err: any) {
+      notify('error', err?.message || 'تعذر تجهيز الملف للمشاركة.');
+    }
   };
 
   return (
@@ -339,7 +343,7 @@ export default function RepoLibraryView({
           </p>
         </div>
       ) : (
-        <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${isCovers ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+        <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${isCovers ? 'xl:grid-cols-4' : 'xl:grid-cols-2'}`}>
           {filtered.map((file) => {
             const companion = previewMap[baseName(file.name)];
             const isBusy = busy?.path === file.path;

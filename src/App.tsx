@@ -69,6 +69,7 @@ import CaseStudyKeyGuideView from './components/CaseStudyKeyGuideView';
 import ExportSection from './components/ExportSection';
 import SettingsView from './components/SettingsView';
 import UpdatePrompt from './components/UpdatePrompt';
+import TrialExpiredView from './components/TrialExpiredView';
 import type { RecordImportResult } from './lib/recordFileImport';
 import { academicYear, toLatinDigits } from './lib/format';
 import { Theme, getStoredTheme, setTheme as persistTheme } from './lib/theme';
@@ -91,6 +92,8 @@ import {
   Plus,
   Award,
 } from 'lucide-react';
+
+const IS_TRIAL = import.meta.env.VITE_TRIAL === '1';
 
 const EXPORT_FOLDERS: Record<ActiveModule, string> = {
   DASHBOARD: 'لوحة التحكم',
@@ -115,6 +118,7 @@ export default function App() {
   const [moduleBadges, setModuleBadges] = useState<Partial<Record<ActiveModule, number>>>({});
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [trialExpired, setTrialExpired] = useState(false);
   const activeModuleRef = useRef<ActiveModule>('DASHBOARD');
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   
@@ -360,7 +364,40 @@ export default function App() {
     }
   }, []);
 
+  // Trial build: no activation server, seven days, then one expiry screen.
   useEffect(() => {
+    if (!IS_TRIAL) return;
+    const api = (window as any).electronAPI;
+    let cancelled = false;
+
+    const refreshTrial = async () => {
+      try {
+        const state = await api?.getTrialState?.();
+        if (cancelled || !state?.trial) return;
+        if (state.expired) {
+          setTrialExpired(true);
+          return;
+        }
+        setTrialExpired(false);
+        setActivationStatus({ status: 'approved' });
+        setFlowStage((prev) => {
+          if (prev !== 'SPLASH' && prev !== 'ACTIVATION') return prev;
+          if (isAppLockEnabled() && !sessionUnlockedRef.current) return 'LOCK';
+          return isRegisteredRef.current ? 'MAIN' : 'REGISTRATION';
+        });
+      } catch {}
+    };
+
+    void refreshTrial();
+    const timer = setInterval(refreshTrial, 60 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (IS_TRIAL) return;
     checkActivationStatus();
 
     const quick =
@@ -383,6 +420,11 @@ export default function App() {
   }, [checkActivationStatus, activationStatus?.status]);
 
   const handleSplashComplete = async () => {
+    if (IS_TRIAL) {
+      const p = loadProfile();
+      setFlowStage(p.isRegistered ? 'MAIN' : 'REGISTRATION');
+      return;
+    }
     await checkActivationStatus();
     // If the status could not be verified (offline/API error) keep the app
     // blocked on the activation screen instead of entering the workspace.
@@ -1214,6 +1256,10 @@ export default function App() {
   };
 
   // Flow Stage Routing
+  if (IS_TRIAL && trialExpired) {
+    return <TrialExpiredView />;
+  }
+
   if (flowStage === 'SPLASH') {
     return <SplashView onComplete={handleSplashComplete} />;
   }

@@ -1,7 +1,7 @@
 {
   "name": "murshid",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "main": "electron/main.cjs",
   "author": "Pandara Tech",
   "description": "مرشد - المرشد التربوي العراقي المتكامل",
@@ -66,6 +66,12 @@
       "assets/records-cover/**/*.jpg",
       "assets/records-cover/**/*.png"
     ],
+    "extraFiles": [
+      {
+        "from": "legal",
+        "to": "legal"
+      }
+    ],
     "asar": true,
     "compression": "store",
     "win": {
@@ -86,10 +92,18 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Murshid",
+      "shortcutName": "مرشد",
       "installerIcon": "public/logo.ico",
       "uninstallerIcon": "public/logo.ico",
-      "installerHeaderIcon": "public/logo.ico"
+      "installerHeaderIcon": "public/logo.ico",
+      "language": "1025",
+      "installerLanguages": [
+        "ar_SA"
+      ],
+      "displayLanguageSelector": false,
+      "license": "installer/license.rtf",
+      "installerSidebar": "installer/sidebar.bmp",
+      "uninstallerSidebar": "installer/uninstallerSidebar.bmp"
     },
     "linux": {
       "target": [
@@ -99,3 +113,4 @@
     }
   }
 }
+

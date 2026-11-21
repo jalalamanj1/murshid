@@ -20,4 +20,8 @@ module.exports = {
     ...pkg.build.win,
     artifactName: 'murshid-trial-${version}-win-${arch}.exe',
   },
+  nsis: {
+    ...pkg.build.nsis,
+    shortcutName: 'مرشد تجريبي',
+  },
 };

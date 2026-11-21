@@ -99,9 +99,11 @@ export default function DesktopWindow({
       {/* ── Right rail: brand, sections, identity ─────────────────────── */}
       <aside className="w-[246px] shrink-0 flex flex-col bg-sidebar-bg border-l border-border-color">
         <div className="flex items-center gap-3 px-5 h-[76px] shrink-0 border-b border-divider-color">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] bg-primary text-[17px] font-black leading-none text-white shadow-xs">
-            م
-          </span>
+          <img
+            src="./logo-128.png"
+            alt="شعار مرشد"
+            className="h-10 w-10 shrink-0 rounded-[11px] object-cover"
+          />
           <span className="min-w-0">
             <span className="block text-[15px] font-black leading-tight text-main">مرشد</span>
           </span>

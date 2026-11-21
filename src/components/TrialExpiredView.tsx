@@ -46,7 +46,7 @@ export default function TrialExpiredView() {
             طلب النسخة الكاملة عبر واتساب
           </button>
           <p className="text-[10px] text-muted" dir="ltr">
-            9647700758915+
+            +9647700758915
           </p>
         </div>
       </div>

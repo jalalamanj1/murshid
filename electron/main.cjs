@@ -9,6 +9,18 @@ const { execFileSync } = require('child_process');
 
 const isDev = !app.isPackaged;
 
+// Trial detection must happen before the single-instance lock and app ready.
+const IS_TRIAL =
+  fs.existsSync(path.join(__dirname, 'trial.flag')) ||
+  process.env.MURSHID_TRIAL === '1';
+
+if (IS_TRIAL) {
+  try {
+    app.setName('Murshid Trial');
+    app.setPath('userData', path.join(app.getPath('appData'), 'murshid-trial'));
+  } catch {}
+}
+
 // Keep Chromium and all native Electron surfaces in the application's light theme.
 nativeTheme.themeSource = 'light';
 
@@ -177,16 +189,6 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // ── Trial mode (separate installer, no activation, 7 days) ────────────
-const IS_TRIAL =
-  fs.existsSync(path.join(__dirname, 'trial.flag')) ||
-  process.env.MURSHID_TRIAL === '1';
-
-if (IS_TRIAL) {
-  try {
-    app.setPath('userData', path.join(app.getPath('appData'), 'murshid-trial'));
-  } catch {}
-}
-
 const TRIAL_DAYS = 7;
 const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
 

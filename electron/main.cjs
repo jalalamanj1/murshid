@@ -201,8 +201,20 @@ function getTrialState() {
   } catch {
     data = null;
   }
-  if (!data || !Number.isFinite(Number(data.installedAt))) {
-    data = { installedAt: Date.now() };
+
+  // A fresh installation always starts a fresh trial. Stale state from an older
+  // installation (for example our test data) must never expire a new install.
+  let installTime = 0;
+  try {
+    const stat = fs.statSync(process.execPath);
+    installTime = stat.birthtimeMs || stat.ctimeMs || 0;
+  } catch {}
+
+  const stored = Number(data?.installedAt);
+  const stale = Boolean(installTime && Number.isFinite(stored) && stored + 5 * 60 * 1000 < installTime);
+
+  if (!data || !Number.isFinite(stored) || stale) {
+    data = { installedAt: installTime || Date.now() };
     try {
       fs.mkdirSync(app.getPath('userData'), { recursive: true });
       fs.writeFileSync(file, JSON.stringify(data));
